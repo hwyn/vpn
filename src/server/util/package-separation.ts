@@ -20,11 +20,10 @@ export class PackageUtil {
   }
 
   static getUid(buffer: Buffer): { uid: string, buffer: Buffer} {
-    const size = PackageUtil.UID_BYTE_SIZE;
-    const titleSize = size + buffer.readUInt8(0);
-    const uid = buffer.slice(size, titleSize).toString('utf-8');
-    const packageBuf = buffer.slice(titleSize);
-    return { uid, buffer: packageBuf };
+    const { UID_BYTE_SIZE } = PackageUtil;
+    const [uidLength] = BufferUtil.readGroupUInt(buffer, [UID_BYTE_SIZE]);
+    const [ uid, packageBuf ] = BufferUtil.unConcat(buffer, [uidLength], UID_BYTE_SIZE);
+    return { uid: uid.toString(), buffer: packageBuf };
   }
 
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
@@ -35,14 +34,12 @@ export class PackageUtil {
     return _package;
   }
 
-  static unpacking(buffer: Buffer): { type: number, uid: string, buffer: Buffer, packageSize: number } {
-    const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
-    const packageSize = buffer.readUInt32BE(0);
-    const type = buffer.readUInt8(4);
-    const title_size = size + buffer.readUInt8(5);
-    const uid = buffer.slice(size, title_size).toString('utf-8');
-    const _buffer = buffer.slice(title_size);
-    return { type, uid, buffer: _buffer, packageSize: packageSize };
+  static unpacking(buffer: Buffer): { type: number | bigint, uid: string, buffer: Buffer, packageSize: number | bigint } {
+    const { TYPE_BYTE_SIZE, UID_BYTE_SIZE, PACKAGE_SIZE } = PackageUtil;
+    const size = TYPE_BYTE_SIZE + UID_BYTE_SIZE + PACKAGE_SIZE;
+    const [ packageSize, type, uidSize ] = BufferUtil.readGroupUInt(buffer, [PACKAGE_SIZE, TYPE_BYTE_SIZE, UID_BYTE_SIZE]);
+    const [ uid, _buffer ] = BufferUtil.unConcat(buffer, [ uidSize ], size);
+    return { type, uid: uid.toString(), buffer: _buffer, packageSize };
   }
 
 
@@ -52,13 +49,13 @@ export class PackageUtil {
     return BufferUtil.concat(title, uid, buffer);
   }
 
-  static packageSigout(buffer: Buffer): { uid: string, cursor: number, data: Buffer} {
-    const size = PackageUtil.UID_BYTE_SIZE + PackageUtil.CURSOR_SIZE;
-    const title_size = size + buffer.readUInt8(0);
-    const uid = buffer.slice(size, title_size).toString('utf-8');
-    const cursor = buffer.readUInt16BE(1);
-    const _buffer = buffer.slice(title_size);
-    return { uid, cursor, data: _buffer };
+  static packageSigout(buffer: Buffer): { uid: string, cursor: number | bigint, data: Buffer} {
+    const { UID_BYTE_SIZE, CURSOR_SIZE } = PackageUtil;
+    const size = UID_BYTE_SIZE + CURSOR_SIZE;
+    const [ uidLength, cursor ] = BufferUtil.readGroupUInt(buffer, [UID_BYTE_SIZE, CURSOR_SIZE]);
+    const [ uid, _buffer ] = BufferUtil.unConcat(buffer, [uidLength], size);
+
+    return { uid: uid.toString(), cursor, data: _buffer };
   }
 
   static eventPackage(type: number) {

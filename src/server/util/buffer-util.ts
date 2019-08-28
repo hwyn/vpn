@@ -43,6 +43,17 @@ export class BufferUtil {
     return buffer;
   }
 
+  static unConcat(buffer: Buffer, byteSizes: (number | bigint)[], offset?: number): Buffer[] {
+    let cursor = offset || 0;
+    const readList: Buffer[] = byteSizes.map((byteSize: number) => {
+      const buf = buffer.slice(cursor, cursor + byteSize);
+      cursor+= byteSize;
+      return buf;
+    });
+    readList.push(buffer.slice(cursor));
+    return readList;
+  }
+
   static readGroupUInt(buffer: Buffer, byteSizes:  (8 | 16 | 32 | 64)[], offset?: number): (number | bigint)[] {
     const readList: (number | bigint)[] = [];
     let cursor: number = 0;
