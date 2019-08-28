@@ -1,0 +1,22 @@
+{
+  "name": "vpn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-tools start runClient=false",
+    "runCN": "ts-tools start webpackDir=webpack-cn runClient=false",
+    "runEN": "ts-tools start webpackDir=webpack-en runClient=false",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.5.5",
+    "@types/node": "^12.7.2",
+    "ts-tools": "git+https://github.com/HWuYing/ts-tools.git",
+    "webpack": "~4.35.2",
+    "express": "^4.16.4"
+  }
+}
