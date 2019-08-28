@@ -1,29 +1,32 @@
-import cluster from  'cluster';
-import { proxyProcess } from '../net-util/proxy-process';
-import { ProxySocket, ProxyTcp } from '../net-util';
-import { uuid } from '../util';
-import { BrowserManage } from '../util/package-manage';
-import { PackageSeparation, PackageUtil } from '../util/package-separation';
-import { ProxyUdpServer  } from '../net-util/proxy-udp';
+import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
+import { uuid, PackageSeparation, PackageUtil, BrowserManage, Handler } from '../util';
 import { ProxyBasic } from '../proxy-basic';
+import { 
+  SERVER_TCP_PORT,
+  SERVER_UDP_INITIAL_PORT,
+  SERVER_MAX_UDP_SERVER,
+  SERVER_IP,
+  CLIENT_UDP_INITIAL_PORT,
+  CLIENT_MAX_UDP_SERVER, 
+  CLIENT_TCP_HTTP_PORT,
+  PROCESS_EVENT_TYPE,
+} from '../constant';
+
+const { UDP_RESPONSE_MESSAGE } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
   constructor() {
     super('cn');
-    this.createUdpSocket(6800, 6900, 5);
-    proxyProcess.on('udp-response-message', this.responseData());
+    this.createUdpClient(SERVER_IP, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
+    this.createUdpServer(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
+    proxyProcess.on(UDP_RESPONSE_MESSAGE, this.responseData());
   }
 
-  protected createUdpSocket(port: number, connectPort: number, count: number) {
-    super.createUdpSocket(port, connectPort, count);
-    this.udpServerList.forEach((server: ProxyUdpServer) => {
-      server.on('data', (data: Buffer) => {
-        const { uid, buffer } = PackageUtil.getUid(data);
-        const { cursor } = PackageUtil.packageSigout(buffer);
-        console.log(`-- client pid:${process.pid} length: ${buffer.length} ${cursor} ${uid} --`);
-        proxyProcess.responseMessage(data);
-      });
-    });
+  protected udpMessage(data: Buffer) {
+    const { uid, buffer } = PackageUtil.getUid(data);
+    const { cursor } = PackageUtil.packageSigout(buffer);
+    console.log(`-- client pid:${process.pid} length: ${buffer.length} ${cursor} ${uid} --`);
+    proxyProcess.responseMessage(data);
   }
 
   private createTcpEvent(uid: string, host: string, port: number) {
@@ -50,7 +53,7 @@ class TcpConnection extends ProxyBasic {
 
   connectionListener(serverProxySocket: ProxySocket) {
     const uid = uuid();
-    const tcpEvent = this.createTcpEvent(uid, '127.0.0.1', 8000);
+    const tcpEvent = this.createTcpEvent(uid, SERVER_IP, SERVER_TCP_PORT);
     const packageSeparation = new PackageSeparation();
     const packageManage = new BrowserManage(uid, packageSeparation, this.requestEvent(tcpEvent));
     this.socketMap.set(uid, serverProxySocket);
@@ -69,4 +72,4 @@ class TcpConnection extends ProxyBasic {
 
   call =  ()  => this.connectionListener.bind(this);
 }
-ProxyTcp.createTcpServer(80, new TcpConnection().call());
+ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection().call());

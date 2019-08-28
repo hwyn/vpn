@@ -1,12 +1,11 @@
 /**
  * Created by NX on 2019/8/24.
  */
-import { EventEmitter} from './index';
+import { EventEmitter} from './event-emitter';
+import { BufferUtil } from './buffer-util';
+import { PACKAGE_MAX_SIZE } from '../constant';
 
 export const globTitleSize: number = 80;
-export const globPackageSize: number = 4000 - globTitleSize;
-
-export const EVENT = { LINK:0, DATA: 1, CLOSE: 2, ERROR: 3, END: 4 };
 
 export class PackageUtil {
   static CURSOR_SIZE: number = 16;
@@ -15,10 +14,8 @@ export class PackageUtil {
   static PACKAGE_SIZE: number = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
-    const title = Buffer.alloc(PackageUtil.UID_BYTE_SIZE);
-    const uidBuf = Buffer.from(uid);
-    title.writeUInt8(uidBuf.length, 0);
-    return Buffer.concat([title, uidBuf, buffer], PackageUtil.UID_BYTE_SIZE + uidBuf.length + buffer.length);
+    const title = BufferUtil.writeGrounUInt([uid.length], [8]);
+    return BufferUtil.concat(title, uid, buffer);
   }
 
   static getUid(buffer: Buffer): { uid: string, buffer: Buffer} {
@@ -30,12 +27,8 @@ export class PackageUtil {
   }
 
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
-    const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
-    const title = Buffer.alloc(size);
-    const _uid = Buffer.from(uid, 'utf-8');
-    title.writeUInt8(type, 4);
-    title.writeUInt8(_uid.length, 5);
-    const _package = Buffer.concat([title, _uid, buffer], size + _uid.length + buffer.length);
+    const title = BufferUtil.writeGrounUInt([0, type, uid.length], [32, 8, 8]);
+    const _package = BufferUtil.concat(title, uid, buffer);
     _package.writeUInt32BE(_package.length, 0);
     return _package;
   }
@@ -57,7 +50,7 @@ export class PackageUtil {
     const _uid = Buffer.from(uid, 'utf-8');
     title.writeUInt8(_uid.length, 0);
     title.writeUInt16BE(cursor, 1);
-    return Buffer.concat([title, _uid, buffer], size + _uid.length + buffer.length);
+    return BufferUtil.concat(title, _uid, buffer);
   }
 
   static packageSigout(buffer: Buffer): { uid: string, cursor: number, data: Buffer} {
@@ -108,9 +101,9 @@ export class PackageSeparation extends EventEmitter {
     const packageBuffer = this.packing(type, uid, buffer);
     this.mergeCache = Buffer.concat([mergeCache, packageBuffer], mergeCache.length + packageBuffer.length);
     const mergeList: Buffer[] = [];
-    while (this.mergeCache.length > globPackageSize) {
-      const sendBuffer = this.mergeCache.slice(0, globPackageSize);
-      this.mergeCache = this.mergeCache.slice(globPackageSize);
+    while (this.mergeCache.length > PACKAGE_MAX_SIZE) {
+      const sendBuffer = this.mergeCache.slice(0, PACKAGE_MAX_SIZE);
+      this.mergeCache = this.mergeCache.slice(PACKAGE_MAX_SIZE);
       mergeList.push(sendBuffer);
     }
     mergeList.length !== 0 ?this.send(uid, mergeList) : null;

@@ -1,5 +1,5 @@
-import { Server, Socket } from 'net';
-import { EventEmitter, isArray} from '../util';
+import { EventEmitter } from '../util/event-emitter';
+import { isArray } from '../util/tools';
 
 export class ProxyEventEmitter extends EventEmitter {
   constructor(public source: any, protected mappingFnNames?: string[]) {

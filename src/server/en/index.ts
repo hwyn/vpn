@@ -1,22 +1,25 @@
-import { proxyProcess } from '../net-util/proxy-process';
-import { ProxySocket, ProxyTcp } from '../net-util';
-import { ServerManage } from '../util/package-manage';
-import { PackageSeparation, PackageUtil } from '../util/package-separation';
-import { ProxyUdpServer  } from '../net-util/proxy-udp';
+import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
+import { ServerManage, PackageSeparation, PackageUtil, Handler } from '../util';
 import { ProxyBasic } from '../proxy-basic';
+import { 
+  SERVER_TCP_PORT,
+  SERVER_UDP_INITIAL_PORT,
+  SERVER_MAX_UDP_SERVER,
+  CLIENT_UDP_INITIAL_PORT,
+  PROCESS_EVENT_TYPE,
+  CLIENT_IP,
+  CLIENT_MAX_UDP_SERVER,
+} from '../constant';
+
+const { UDP_REQUEST_MESSAGE } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
+  
   constructor() {
     super('en');
-    this.createUdpSocket(6900, 6800, 5);
-    proxyProcess.on('udp-request-message', this.requestData());
-  }
-
-  protected createUdpSocket(port: number, connectPort: number, count: number) {
-    super.createUdpSocket(port, connectPort, count);
-    this.udpServerList.forEach((server: ProxyUdpServer) => {
-      server.on('data', (data: Buffer) => proxyProcess.requestMessage(data));
-    });
+    this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
+    this.createUdpServer(SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
+    proxyProcess.on(UDP_REQUEST_MESSAGE, this.requestData());
   }
 
   private createTcpEvent(tcpEvent: ProxySocket) {
@@ -26,6 +29,10 @@ class TcpConnection extends ProxyBasic {
       console.log(`--------server connection ${ uid }----------`);
       tcpEvent.emitSync('link', tcpEvent, uid, buffer);
     });
+  }
+
+  protected udpMessage(data: Buffer): void {
+    proxyProcess.requestMessage(data);
   }
 
   protected responseEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
@@ -65,4 +72,4 @@ class TcpConnection extends ProxyBasic {
   call = () => (tcpEvent: ProxySocket) => this.createTcpEvent(tcpEvent);
 }
 
-ProxyTcp.createTcpServer(8000, new TcpConnection().call());
+ProxyTcp.createTcpServer(SERVER_TCP_PORT, new TcpConnection().call());

@@ -2,8 +2,11 @@
  * Created by NX on 2019/8/24.
  */
 import { proxyProcess } from '../net-util/proxy-process';
-import {PackageSeparation, PackageUtil, EVENT} from './package-separation';
+import { PackageSeparation, PackageUtil } from './package-separation';
 import { ProxySocket} from "../net-util/proxy-socket";
+import { COMMUNICATION_EVENT } from '../constant';
+
+const { LINK, DATA, CLOSE, ERROR, END } = COMMUNICATION_EVENT;
 
 export class PackageManage {
   protected cursor: number = 0;
@@ -22,9 +25,8 @@ export class PackageManage {
   endCall = (sourceMap: Map<string, ProxySocket>) => () => {
     console.log(`--${this.type} end listening ${this.uid}--`);
     if (!this.isEnd) {
-      // this.packageSeparation.mergePackage(EVENT.END, uid, Buffer.alloc(0));
       // this.packageSeparation.immediatelySend(this.uid);
-      this.packageSeparation.sendEventPackage(this.uid, EVENT.END);
+      this.packageSeparation.sendEventPackage(this.uid, END);
     }
   };
 
@@ -34,7 +36,6 @@ export class PackageManage {
    */
   closeCall = (sourceMap: Map<string, ProxySocket>) => () => {
     console.log(`--${this.type} close listening ${this.uid}--`);
-    // this.packageSeparation.linkTitle(EVENT.CLOSE, uid, Buffer.alloc(0));
     sourceMap.delete(this.uid);
   };
 
@@ -45,20 +46,20 @@ export class PackageManage {
   errorCall = (sourceMap: Map<string, ProxySocket>) => () => {
     console.log(`--${this.type} error listening ${this.uid}--`);
     if (!this.isEnd) {
-      this.packageSeparation.sendEventPackage(this.uid, EVENT.END);
+      this.packageSeparation.sendEventPackage(this.uid, END);
     }
   };
 
   distributeCall = (proxySocket: ProxySocket, sourceMap: Map<string, ProxySocket>) => ({ uid, data, type }: any) => {
     switch (type) {
-      case EVENT.LINK:
-      case EVENT.DATA: proxySocket.write(data); break;
-      case EVENT.END:
-      case EVENT.ERROR: proxySocket.end(); break;
-      case EVENT.CLOSE: break;
+      case LINK:
+      case DATA: proxySocket.write(data); break;
+      case END:
+      case ERROR: proxySocket.end(); break;
+      case CLOSE: break;
     }
 
-    if (![EVENT.LINK, EVENT.DATA].includes(type)) {
+    if (![LINK, DATA].includes(type)) {
       this.isEnd = true;
       console.log(`--${this.type} ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
       proxyProcess.deleteUid(this.uid);
@@ -73,7 +74,7 @@ export class BrowserManage extends PackageManage{
   }
 
   browserLinkCall = () => (buffer: any) => {
-    const event = this.cursor === 0 ? EVENT.LINK : EVENT.DATA;
+    const event = this.cursor === 0 ? LINK : DATA;
     this.packageSeparation.mergePackage(event, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
     this.cursor++;
@@ -100,7 +101,7 @@ export class ServerManage extends PackageManage{
   }
 
   serverLinkCall = () => (buffer: any) => {
-    this.packageSeparation.mergePackage(EVENT.DATA, this.uid, buffer);
+    this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
 

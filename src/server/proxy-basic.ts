@@ -4,23 +4,30 @@
 import { ProxyUdpServer, createUdpServer  } from './net-util/proxy-udp';
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
 import { ProxySocket } from './net-util';
-import { PackageUtil } from './util/package-separation';
+import { PackageUtil, Handler } from './util';
 
-export class ProxyBasic {
+export abstract class ProxyBasic {
   protected socketMap: Map<string, ProxySocket> =  new Map();
   protected udpServerList: ProxyUdpServer[] = [];
   protected udpClientList: ProxyUdpSocket[] = [];
   protected addressList: { port: number, host: string }[] = [];
   private _cursor: number = 0;
-  private count: number = 0;
   constructor(private serverName: string) { }
 
-  protected createUdpSocket(listeningPort: number, connectPort: number, count: number) {
-    new Array(count).fill(listeningPort).map((item: number, index: number) => {
-      this.udpServerList.push(createUdpServer(item + index));
-      this.udpClientList.push(createSocketClient('127.0.0.1', connectPort + index));
-      this.addressList.push({ port: connectPort + index, host: '127.0.0.1' });
+  protected createUdpServer(initialPort: number, maxListenNumber: number) {
+    this.udpServerList = new Array(maxListenNumber).fill(initialPort).map((item: number, index: number) => {
+      const udpServer = createUdpServer(item + index);
+      udpServer.on('data', this.udpMessage.bind(this));
+      return udpServer;
     });
+    return this.udpServerList;
+  }
+
+  protected createUdpClient(host: string, initialPort: number, maxClientNumber: number) {
+    this.udpClientList = new Array(maxClientNumber).fill(initialPort).map((item: number, index: number) => {
+      return createSocketClient(host, item + index);
+    });
+    return this.udpClientList;
   }
 
   private write(buffer: Buffer, clientCursor: number, uid?: string) {
@@ -36,6 +43,8 @@ export class ProxyBasic {
       this.write(buffer, this.getCursor(), uid);
     });
   };
+
+  protected abstract udpMessage(data: Buffer, next?: Handler): void;
 
   getCursor() {
     this._cursor++;

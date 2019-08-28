@@ -1,7 +1,6 @@
 /**
  * Created by NX on 2019/8/25.
  */
-import { proxyProcess } from './proxy-process';
 import { Socket, createSocket, RemoteInfo } from 'dgram';
 import {ProxyEventEmitter} from "./proxy-event-emitter";
 

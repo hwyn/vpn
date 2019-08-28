@@ -1,8 +1,8 @@
-import cluster from  'cluster';
-import { EventEmitter } from '../util/index';
-import { PackageUtil } from '../util/package-separation';
+import cluster from 'cluster';
+import { EventEmitter, PackageUtil } from '../util';
+import { PROCESS_EVENT_TYPE } from '../constant';
 
-
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID } = PROCESS_EVENT_TYPE;
 
 export class WorkerManage extends EventEmitter {
   private uidSet: Set<string> = new Set();
@@ -23,7 +23,7 @@ export class WorkerManage extends EventEmitter {
     const { runWorker, buffer } = this.distributionWorker(event);
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
-      runWorker.send({ event: 'udp-response-message', data: buffer });
+      runWorker.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
     } else {
       console.log('error--------->', runWorker);
     }
@@ -51,10 +51,10 @@ export class WorkerManage extends EventEmitter {
 
   eventBus({ event, data }: any) {
     switch(event) {
-      case 'bind-uid': this.bindUid(data); break;
-      case 'delete-uid': this.deleteUid(data); break;
-      case 'udp-request-message': this.distributionRequestWorker(data);break;
-      case 'udp-response-message': this.distributionResponseWorker(data);break;
+      case BIND_UID: this.bindUid(data); break;
+      case DELETE_UID: this.deleteUid(data); break;
+      case UDP_REQUEST_MESSAGE: this.distributionRequestWorker(data);break;
+      case UDP_RESPONSE_MESSAGE: this.distributionResponseWorker(data);break;
     }
   }
 

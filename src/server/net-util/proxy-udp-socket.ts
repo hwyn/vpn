@@ -3,7 +3,7 @@
  */
 import { Socket, createSocket } from 'dgram';
 import {ProxyEventEmitter} from "./proxy-event-emitter";
-import { PackageUtil } from '../util/package-separation';
+import { PackageUtil } from '../util';
 
 export const createSocketClient = (host: string, port: number): ProxyUdpSocket => {
   return new ProxyUdpSocket(host, port);
