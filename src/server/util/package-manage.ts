@@ -37,6 +37,7 @@ export class PackageManage {
   closeCall = (sourceMap: Map<string, ProxySocket>) => () => {
     console.log(`--${this.type} close listening ${this.uid}--`);
     sourceMap.delete(this.uid);
+    proxyProcess.deleteUid(this.uid);
   };
 
   /**
