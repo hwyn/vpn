@@ -8,9 +8,9 @@ import { PACKAGE_MAX_SIZE } from '../constant';
 export const globTitleSize: number = 80;
 
 export class PackageUtil {
-  static CURSOR_SIZE: 16 = 16;
   static UID_BYTE_SIZE: 8 = 8;
   static TYPE_BYTE_SIZE: 8 = 8;
+  static CURSOR_SIZE: 16 = 16;
   static PACKAGE_SIZE: 32 = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
@@ -76,7 +76,7 @@ export class PackageSeparation extends EventEmitter {
   private mergeCache: Buffer = Buffer.alloc(0);
   private splitCursor: number = 0;
   private splitCache: Buffer = Buffer.alloc(0);
-  private splitList: Map<number, Buffer> = new Map();
+  private splitList: Map<number | bigint, Buffer> = new Map();
   private splitPageSize: number;
   private lossPacketCount: number;
   private maxPackageCount: number;
@@ -117,7 +117,7 @@ export class PackageSeparation extends EventEmitter {
       this.splitCache = Buffer.concat([splitCache, packageBuffer], splitCache.length + packageBuffer.length);
 
       if (!this.splitPageSize && this.splitCache.length >= size) {
-        this.splitPageSize = this.unpacking(this.splitCache).packageSize;
+        this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
       }
       while (this.splitPageSize && this.splitPageSize <= this.splitCache.length) {
         const packageData = this.splitCache.slice(0, this.splitPageSize);
@@ -126,13 +126,13 @@ export class PackageSeparation extends EventEmitter {
         this.emitSync('separation', {  uid, type: packageType, data: buffer });
         this.splitPageSize = void(0);
         if (this.splitCache.length >= size) {
-          this.splitPageSize = this.unpacking(this.splitCache).packageSize;
+          this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
         }
       }
       this.splitList.delete(this.splitCursor);
       this.splitCursor++;
     }
-    this.printLoseInfo(uid, cursor, type);
+    this.printLoseInfo(uid, cursor as number, type);
   }
 
   send(uid: string, buffer: Buffer | Buffer[], isEvent?: boolean) {
