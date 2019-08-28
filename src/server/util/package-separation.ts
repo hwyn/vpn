@@ -8,13 +8,14 @@ import { PACKAGE_MAX_SIZE } from '../constant';
 export const globTitleSize: number = 80;
 
 export class PackageUtil {
-  static CURSOR_SIZE: number = 16;
-  static UID_BYTE_SIZE: number = 8;
-  static TYPE_BYTE_SIZE: number = 8;
-  static PACKAGE_SIZE: number = 32;
+  static CURSOR_SIZE: 16 = 16;
+  static UID_BYTE_SIZE: 8 = 8;
+  static TYPE_BYTE_SIZE: 8 = 8;
+  static PACKAGE_SIZE: 32 = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
-    const title = BufferUtil.writeGrounUInt([uid.length], [8]);
+    const { UID_BYTE_SIZE } = PackageUtil;
+    const title = BufferUtil.writeGrounUInt([uid.length], [UID_BYTE_SIZE]);
     return BufferUtil.concat(title, uid, buffer);
   }
 
@@ -27,7 +28,8 @@ export class PackageUtil {
   }
 
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
-    const title = BufferUtil.writeGrounUInt([0, type, uid.length], [32, 8, 8]);
+    const { UID_BYTE_SIZE, TYPE_BYTE_SIZE, PACKAGE_SIZE } = PackageUtil;
+    const title = BufferUtil.writeGrounUInt([0, type, uid.length], [PACKAGE_SIZE, TYPE_BYTE_SIZE, UID_BYTE_SIZE]);
     const _package = BufferUtil.concat(title, uid, buffer);
     _package.writeUInt32BE(_package.length, 0);
     return _package;
@@ -45,12 +47,9 @@ export class PackageUtil {
 
 
   static packageSign(uid: string, cursor: number, buffer: Buffer) {
-    const size = PackageUtil.UID_BYTE_SIZE + PackageUtil.CURSOR_SIZE;
-    const title = Buffer.alloc(size);
-    const _uid = Buffer.from(uid, 'utf-8');
-    title.writeUInt8(_uid.length, 0);
-    title.writeUInt16BE(cursor, 1);
-    return BufferUtil.concat(title, _uid, buffer);
+    const { UID_BYTE_SIZE, CURSOR_SIZE } = PackageUtil;
+    const title = BufferUtil.writeGrounUInt([uid.length, cursor], [UID_BYTE_SIZE, CURSOR_SIZE]);
+    return BufferUtil.concat(title, uid, buffer);
   }
 
   static packageSigout(buffer: Buffer): { uid: string, cursor: number, data: Buffer} {
@@ -63,9 +62,7 @@ export class PackageUtil {
   }
 
   static eventPackage(type: number) {
-    const title = Buffer.alloc(PackageUtil.TYPE_BYTE_SIZE);
-    title.writeUInt8(type, 0);
-    return title;
+    return BufferUtil.writeGrounUInt([type], [PackageUtil.TYPE_BYTE_SIZE]);
   }
 
   static unEventPackage(buffer: Buffer) {
