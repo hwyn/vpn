@@ -18,10 +18,6 @@ export class ProxyUdpSocket extends ProxyEventEmitter {
 
   write(buffer: Buffer, uid?: string) {
     const bindUidBuffer = PackageUtil.bindUid(uid, buffer);
-    // console.log('-------requres-------');
-    // const { cursor, data } = PackageUtil.packageSigout(buffer);
-    // console.log('cursor', cursor);
-    // console.log(PackageUtil.unpacking(data));
     this.socket.send(bindUidBuffer, this.port, this.host, (error: Error) => {
       if (error) {
         this.emitAsync('error', error);

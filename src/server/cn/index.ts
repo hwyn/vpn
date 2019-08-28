@@ -42,7 +42,6 @@ class TcpConnection extends ProxyBasic {
 
   responseData = () => (buffer: Buffer) => {
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
-    console.log(`response pid:${process.pid} length: ${buffer.length} ${cursor} ${uid}`);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('link', buffer);

@@ -35,7 +35,6 @@ class TcpConnection extends ProxyBasic {
   protected requestData = () => (buffer: Buffer) => {
     const { uid } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
-    console.log(uid);
     if (clientSocket) {
       clientSocket.emitSync('link', buffer)
     } else {
@@ -47,7 +46,7 @@ class TcpConnection extends ProxyBasic {
     const packageSeparation = new PackageSeparation();
     const packageManage = new ServerManage(uid, packageSeparation, this.responseEvent(tcpEvent));
     // const clientProxySocket = ProxySocket.createSocketClient('127.0.0.1', 3001);
-    const clientProxySocket = ProxySocket.createSocketClient('localhost', 4600);
+    const clientProxySocket = ProxySocket.createSocketClient('127.0.0.1', 4600);
     this.socketMap.set(uid, clientProxySocket);
     proxyProcess.bindUid(uid);
 

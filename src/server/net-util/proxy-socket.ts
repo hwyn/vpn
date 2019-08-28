@@ -32,7 +32,6 @@ export class ProxySocket extends ProxyEventEmitter {
 
   private proxyEmit(event: string, data: Buffer) {
     if (ProxySocket.interceptEvents.includes(event)) {
-      // const result = this.emitSync(event, data);
       event !== 'error' && this.socketEmit.call(this.socket, event, data);
     } else {
       this.socketEmit.call(this.socket, event, data);

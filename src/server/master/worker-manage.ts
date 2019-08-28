@@ -64,7 +64,6 @@ export class WorkerManage extends EventEmitter {
 
   private bindUid(uid: string) {
     this.uidSet.add(uid);
-    console.log(this.uidSet);
   }
 }
 

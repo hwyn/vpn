@@ -26,7 +26,7 @@ export class ProxyBasic {
   private write(buffer: Buffer, clientCursor: number, uid?: string) {
     const { cursor, data } = PackageUtil.packageSigout(buffer);
     if (this.serverName === 'en') {
-      console.log(`---server length: ${data.length}  cursor: ${cursor} uid: ${uid}---`);
+      console.log(`-server length: ${data.length}  cursor: ${cursor} uid: ${uid}--`);
     }
     this.udpClientList[clientCursor].write(buffer, uid);
   }
