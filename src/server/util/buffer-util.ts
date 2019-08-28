@@ -42,4 +42,18 @@ export class BufferUtil {
     }
     return buffer;
   }
+
+  static readGroupUInt(buffer: Buffer, byteSizes:  (8 | 16 | 32 | 64)[], offset?: number): (number | bigint)[] {
+    const readList: (number | bigint)[] = [];
+    let cursor: number = 0;
+    byteSizes.forEach((byteSize: number) => {
+      switch (byteSize) {
+        case 8: readList.push(buffer.readUInt8(cursor)); cursor++;break;
+        case 16: readList.push(buffer.readUInt16BE(cursor)); cursor += 2;break;
+        case 32: readList.push(buffer.readUInt32BE(cursor)); cursor += 4;break;
+        case 64: readList.push(buffer.readBigInt64BE(cursor)); cursor += 8;break;
+      }
+    });
+    return readList;
+  }
 }
