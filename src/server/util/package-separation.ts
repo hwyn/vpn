@@ -3,7 +3,8 @@
  */
 import { EventEmitter} from './event-emitter';
 import { BufferUtil } from './buffer-util';
-import { PACKAGE_MAX_SIZE } from '../constant';
+import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
+const { LINK, DATA, CLOSE, ERROR, END } = COMMUNICATION_EVENT;
 
 export const globTitleSize: number = 80;
 
@@ -123,7 +124,8 @@ export class PackageSeparation extends EventEmitter {
         const packageData = this.splitCache.slice(0, this.splitPageSize);
         const { uid, type: packageType, buffer } = this.unpacking(packageData);
         this.splitCache = this.splitCache.slice(this.splitPageSize);
-        this.emitSync('separation', {  uid, type: packageType, data: buffer });
+        // this.emitSync('separation', { uid, type: packageType, data: buffer });
+        this.separation({ uid, type: packageType, data: buffer });
         this.splitPageSize = void(0);
         if (this.splitCache.length >= size) {
           this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
@@ -142,7 +144,18 @@ export class PackageSeparation extends EventEmitter {
       return sendPackage;
     });
     if (bufferList.length) {
-      isEvent ? this.emitAsync('event', bufferList) : this.emitSync('send', bufferList);
+      isEvent ? this.emitAsync('sendEvent', bufferList) : this.emitSync('sendData', bufferList);
+    }
+  }
+
+  separation({ uid, type, data}: any) {
+    const isEvent = Object.keys(COMMUNICATION_EVENT)
+      .filter((key: string) => !['DATA', 'LINK'].includes(key))
+      .some((key: string) => COMMUNICATION_EVENT[key] === type);
+    if (isEvent) {
+      this.emitAsync('receiveEvent', { uid, type, data });
+    } else {
+      this.emitSync('receiveData', { uid, type, data });
     }
   }
 

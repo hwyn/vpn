@@ -18,54 +18,8 @@ export class PackageManage {
     protected type?: string
   ) { }
 
-  /**
-   * socket end事件注册
-   * @param uid
-   */
-  endCall = (sourceMap: Map<string, ProxySocket>) => () => {
-    console.log(`--${this.type} end listening ${this.uid}--`);
-    if (!this.isEnd) {
-      // this.packageSeparation.immediatelySend(this.uid);
-      this.packageSeparation.sendEventPackage(this.uid, END);
-    }
-  };
-
-  /**
-   * socket close事件注册
-   * @param uid
-   */
-  closeCall = (sourceMap: Map<string, ProxySocket>) => () => {
-    console.log(`--${this.type} close listening ${this.uid}--`);
-    sourceMap.delete(this.uid);
-    proxyProcess.deleteUid(this.uid);
-  };
-
-  /**
-   * socket error事件注册
-   * @param uid
-   */
-  errorCall = (sourceMap: Map<string, ProxySocket>) => () => {
-    console.log(`--${this.type} error listening ${this.uid}--`);
-    if (!this.isEnd) {
-      this.packageSeparation.sendEventPackage(this.uid, END);
-    }
-  };
-
-  distributeCall = (proxySocket: ProxySocket, sourceMap: Map<string, ProxySocket>) => ({ uid, data, type }: any) => {
-    switch (type) {
-      case LINK:
-      case DATA: proxySocket.write(data); break;
-      case END:
-      case ERROR: proxySocket.end(); break;
-      case CLOSE: break;
-    }
-
-    if (![LINK, DATA].includes(type)) {
-      this.isEnd = true;
-      console.log(`--${this.type} ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
-      proxyProcess.deleteUid(this.uid);
-      // sourceMap.delete(this.uid);
-    }
+  distributeCall = (proxySocket: ProxySocket) => ({ data }: any) => {
+    proxySocket.write(data);
   };
 }
 

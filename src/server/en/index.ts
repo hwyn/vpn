@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, Handler } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, Handler, AbnormalManage } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { 
   SERVER_TCP_PORT,
@@ -14,7 +14,6 @@ import {
 const { UDP_REQUEST_MESSAGE } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
-  
   constructor() {
     super('en');
     this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
@@ -43,7 +42,7 @@ class TcpConnection extends ProxyBasic {
     const { uid } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
-      clientSocket.emitSync('link', buffer)
+      clientSocket.emitSync('link', buffer);
     } else {
       console.log('not ===> clientSocket');
     }
@@ -52,21 +51,27 @@ class TcpConnection extends ProxyBasic {
   private connectionListener = () => (tcpEvent: ProxySocket, uid: string, data: Buffer) => {
     const packageSeparation = new PackageSeparation();
     const packageManage = new ServerManage(uid, packageSeparation, this.responseEvent(tcpEvent));
-    // const clientProxySocket = ProxySocket.createSocketClient('127.0.0.1', 3001);
-    const clientProxySocket = ProxySocket.createSocketClient('127.0.0.1', 4600);
-    this.socketMap.set(uid, clientProxySocket);
+    // const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 3000);
+    const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 4600);
+    const abnormalManage = new AbnormalManage(uid, tcpEvent, packageSeparation);
+
+    this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
-    packageSeparation.on('send', packageManage.sendCall(this.send(uid)));
-    packageSeparation.on('separation', packageManage.distributeCall(clientProxySocket, this.socketMap));
-    packageSeparation.on('event', this.responseEvent(tcpEvent));
+    packageSeparation.on('sendData', packageManage.sendCall(this.send(uid)));
+    packageSeparation.on('sendEvent', this.responseEvent(tcpEvent));
+    packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
+    packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
 
-    clientProxySocket.on('link', packageManage.serverDataCall());
-    clientProxySocket.on('end', packageManage.endCall(this.socketMap));
-    clientProxySocket.on('error', packageManage.errorCall(this.socketMap));
-    clientProxySocket.on('close', packageManage.closeCall(this.socketMap));
-    clientProxySocket.on('connect', () => packageManage.serverDataCall()(data));
-    clientProxySocket.on('data', packageManage.serverLinkCall());
+    clientSocket.on('link', packageManage.serverDataCall());
+    clientSocket.on('connect', () => packageManage.serverDataCall()(data));
+    clientSocket.on('data', packageManage.serverLinkCall());
+
+    clientSocket.on('end', abnormalManage.endCall());
+    clientSocket.on('close', abnormalManage.closeCall());
+    clientSocket.on('error', abnormalManage.errorCall());
+
+    abnormalManage.on('end', () => clientSocket.end())
   };
 
   call = () => (tcpEvent: ProxySocket) => this.createTcpEvent(tcpEvent);

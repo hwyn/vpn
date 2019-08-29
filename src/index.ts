@@ -7,11 +7,6 @@ if (cluster.isMaster) {
     cluster.fork();
     workerLength--;
   }
-  if (!Object.prototype.hasOwnProperty.call(process, 'getMasterWorkers')) {
-    Object.defineProperty(process, 'getMasterWorkers', {
-      value: () => cluster.workers
-    });
-  }
   require('./server/master')
 } else {
   require('./server/cn');

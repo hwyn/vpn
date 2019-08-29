@@ -16,6 +16,26 @@ export class EventEmitter {
     this.events[key].push(handler);
   }
 
+  /**
+   * 执行一次
+   * @param key key
+   * @param handler Handler 
+   */
+  once(key: string, handler: Handler) {
+    const cloneHandler = (...arg: any[]) => {
+      handler(...arg);
+      this.remove(key, cloneHandler);
+    };
+    this.on(key, cloneHandler);
+  }
+
+  remove(key: string, handler: Handler) {
+    if (!hasOwnProperty(this.events, key)) {
+      return ;
+    }
+    this.events[key] = this.events[key].filter((next: Handler) => next !== handler);
+  }
+
   pipe(...arg: any[]) {
     const key = arg[0];
     const handlers = arg.slice(1);

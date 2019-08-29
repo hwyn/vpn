@@ -28,11 +28,12 @@ export class ProxySocket extends ProxyEventEmitter {
       this.waitingWriteList.forEach((buffer: Buffer) => this.write(buffer));
       this.waitingWriteList = [];
     });
+    this.on('close', () => this.ended = true);
   }
 
   private proxyEmit(event: string, data: Buffer) {
     if (ProxySocket.interceptEvents.includes(event)) {
-      event !== 'error' && this.socketEmit.call(this.socket, event, data);
+      this.socketEmit.call(this.socket, event, data);
     } else {
       this.socketEmit.call(this.socket, event, data);
     }
@@ -47,6 +48,9 @@ export class ProxySocket extends ProxyEventEmitter {
   }
 
   write(buffer: Buffer) {
+    if (this.ended) {
+      return ;
+    }
     if (!this.socket.connecting) {
       this.socket.write(buffer);
     } else {
