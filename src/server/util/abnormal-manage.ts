@@ -3,7 +3,7 @@ import { PackageSeparation } from './package-separation';
 import { COMMUNICATION_EVENT } from '../constant';
 import { ProxySocket } from '../net-util';
 
-const { LINK, DATA, CLOSE, ERROR, END } = COMMUNICATION_EVENT;
+const { ERROR, END } = COMMUNICATION_EVENT;
 
 export class AbnormalManage extends EventEmitter {
   private isNotEnd: boolean = true;

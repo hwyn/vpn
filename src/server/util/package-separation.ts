@@ -5,6 +5,8 @@ import { EventEmitter} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
 
+const { END } = COMMUNICATION_EVENT;
+
 export const globTitleSize: number = 80;
 
 export class PackageUtil {
@@ -121,10 +123,9 @@ export class PackageSeparation extends EventEmitter {
       }
       while (this.splitPageSize && this.splitPageSize <= this.splitCache.length) {
         const packageData = this.splitCache.slice(0, this.splitPageSize);
-        const { uid, type: packageType, buffer } = this.unpacking(packageData);
+        const { uid, type: eventType, buffer } = this.unpacking(packageData);
         this.splitCache = this.splitCache.slice(this.splitPageSize);
-        // this.emitSync('separation', { uid, type: packageType, data: buffer });
-        this.separation({ uid, type: packageType, data: buffer });
+        this.separation({ uid, type: eventType, data: buffer });
         this.splitPageSize = void(0);
         if (this.splitCache.length >= size) {
           this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
@@ -165,8 +166,8 @@ export class PackageSeparation extends EventEmitter {
   }
 
   printLoseInfo(uid: string, cursor: number, type?: number) {
-    if (type === 4 || this.maxPackageCount) {
-      if (type === 4) {
+    if (type === END || this.maxPackageCount) {
+      if (type === END) {
         this.maxPackageCount = cursor;
         this.lossPacketCount =  this.maxPackageCount - this.splitCursor - this.splitList.size + 1;
       } else {

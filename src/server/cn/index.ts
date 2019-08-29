@@ -73,6 +73,7 @@ class TcpConnection extends ProxyBasic {
       proxyProcess.deleteUid(uid);
       clientSocket.end();
       tcpEvent.end();
+      console.log('socketMap.size', this.socketMap.size);
     });
   }
 

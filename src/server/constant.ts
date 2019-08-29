@@ -32,7 +32,7 @@ export const PROCESS_EVENT_TYPE = {
 };
 
 // socket通讯事件
-export const COMMUNICATION_EVENT: { [key: string]: number } = {
+export const COMMUNICATION_EVENT = {
   DATA: 1, 
   CLOSE: 2, 
   ERROR: 3, 
