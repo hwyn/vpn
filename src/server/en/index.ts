@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, Handler, AbnormalManage } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, Handler } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { 
   SERVER_TCP_PORT,
@@ -21,15 +21,6 @@ class TcpConnection extends ProxyBasic {
     proxyProcess.on(UDP_REQUEST_MESSAGE, this.requestData());
   }
 
-  private createTcpEvent(tcpEvent: ProxySocket) {
-    tcpEvent.on('link', this.connectionListener());
-    tcpEvent.on('data', (buffer: Buffer) => {
-      const { uid } = PackageUtil.packageSigout(buffer);
-      console.log(`--------server connection ${ uid }----------`);
-      tcpEvent.emitSync('link', tcpEvent, uid, buffer);
-    });
-  }
-
   protected udpMessage(data: Buffer): void {
     proxyProcess.requestMessage(data);
   }
@@ -42,39 +33,58 @@ class TcpConnection extends ProxyBasic {
     const { uid } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
-      clientSocket.emitSync('link', buffer);
+      clientSocket.emitSync('agent', buffer);
     } else {
       console.log('not ===> clientSocket');
     }
   };
 
-  private connectionListener = () => (tcpEvent: ProxySocket, uid: string, data: Buffer) => {
-    const packageSeparation = new PackageSeparation();
-    const packageManage = new ServerManage(uid, packageSeparation, this.responseEvent(tcpEvent));
+  private connectionListener = (
+    { tcpEvent, packageSeparation, packageManage }: { tcpEvent: ProxySocket, packageSeparation: PackageSeparation, packageManage: ServerManage  }
+  ) => ({uid, data: buffer}: { uid: string, data: Buffer}) => {
     // const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 3000);
+    console.log(`--------server connection ${ uid }----------`);
+    const match = buffer.toString().match(/([^\r\n]+)/g);
+    console.log(`${match[0]} -- ${match[1]}`);
+
     const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 4600);
     const abnormalManage = new AbnormalManage(uid, tcpEvent, packageSeparation);
 
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
-    packageSeparation.on('sendData', packageManage.sendCall(this.send(uid)));
+    packageSeparation.on('sendData', this.send(uid));
     packageSeparation.on('sendEvent', this.responseEvent(tcpEvent));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
     packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
 
-    clientSocket.on('link', packageManage.serverDataCall());
-    clientSocket.on('connect', () => packageManage.serverDataCall()(data));
-    clientSocket.on('data', packageManage.serverLinkCall());
+    tcpEvent.on('data', packageManage.agentRequestCall());
+    tcpEvent.on('error', () => clientSocket.end());
 
+    clientSocket.on('connect', () => clientSocket.write(buffer));
+    clientSocket.on('data', packageManage.serverLinkCall());
+    clientSocket.on('agent', packageManage.agentRequestCall());
     clientSocket.on('end', abnormalManage.endCall());
     clientSocket.on('close', abnormalManage.closeCall());
     clientSocket.on('error', abnormalManage.errorCall());
 
-    abnormalManage.on('end', () => clientSocket.end())
-  };
+    abnormalManage.on('end', () => {
+      proxyProcess.deleteUid(uid);
+      this.socketMap.delete(uid);
+      clientSocket.end();
+      tcpEvent.end();
+    });
+  }
 
-  call = () => (tcpEvent: ProxySocket) => this.createTcpEvent(tcpEvent);
+  call = () => (tcpEvent: ProxySocket) => {
+    tcpEvent.once('data', (data: Buffer) => {
+      const { uid } = PackageUtil.packageSigout(data);
+      const packageSeparation = new PackageSeparation();
+      const packageManage = new ServerManage(uid, packageSeparation);
+      packageSeparation.once('receiveData', this.connectionListener({ tcpEvent,  packageSeparation, packageManage}));
+      packageManage.agentRequestCall()(data);
+    });
+  }
 }
 
 ProxyTcp.createTcpServer(SERVER_TCP_PORT, new TcpConnection().call());

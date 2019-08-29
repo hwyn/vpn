@@ -14,7 +14,6 @@ export class PackageManage {
   constructor(
     protected uid: string,
     protected packageSeparation: PackageSeparation,
-    protected notice: (buffer: Buffer[]) => void,
     protected type?: string
   ) { }
 
@@ -24,35 +23,30 @@ export class PackageManage {
 }
 
 export class BrowserManage extends PackageManage{
-  constructor(uid: string, packageSeparation: PackageSeparation, notice: (buffer: Buffer[]) => void) {
-    super(uid, packageSeparation, notice, 'browser');
+  constructor(uid: string, packageSeparation: PackageSeparation) {
+    super(uid, packageSeparation,  'browser');
   }
-
-  browserLinkCall = () => (buffer: any) => {
-    const event = this.cursor === 0 ? LINK : DATA;
-    this.packageSeparation.mergePackage(event, this.uid, buffer);
-    this.packageSeparation.immediatelySend(this.uid);
-    this.cursor++;
-  };
-
-  /**
-   * 连接代理服务器
-   * @param packageSeparation
-   */
-  browserDataCall = () => (buffer: any) => {
+  
+  agentResponseCall = () => (buffer: Buffer) => {
     const { cursor, data, uid } = PackageUtil.packageSigout(buffer);
     // console.log(`--cn length: ${data.length}  cursor: ${cursor} uid: ${uid}--`);
     this.packageSeparation.splitPackage(buffer);
-  };
+  }
 
-  sendCall = (sendUdp: (buffer: Buffer[], uid?: string) => void) => ( buffer: Buffer[]) => {
-    this.cursor === 0 ? this.notice(buffer) : sendUdp(buffer, this.uid);
+  clientLinkCall = (buffer: Buffer) => () => {
+    this.packageSeparation.mergePackage(LINK, this.uid, buffer);
+    this.packageSeparation.immediatelySend(this.uid);
+  }
+
+  clientDataCall = () => (buffer: Buffer) => {
+    this.packageSeparation.mergePackage(DATA, this.uid, buffer);
+    this.packageSeparation.immediatelySend(this.uid);
   };
 }
 
 export class ServerManage extends PackageManage{
-  constructor(uid: string,packageSeparation: PackageSeparation, notice: (buffer: Buffer[]) => void) {
-    super(uid, packageSeparation, notice, 'server ');
+  constructor(uid: string,packageSeparation: PackageSeparation) {
+    super(uid, packageSeparation, 'server ');
   }
 
   serverLinkCall = () => (buffer: any) => {
@@ -64,13 +58,8 @@ export class ServerManage extends PackageManage{
    * 连接目标服务器事件
    * @param packageSeparation
    */
-  serverDataCall = () => (buffer: any) => {
+  agentRequestCall = () => (buffer: any) => {
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
     this.packageSeparation.splitPackage(buffer);
-    this.packageSeparation.immediatelySend(this.uid);
-  };
-
-  sendCall = (sendUdp: (buffer: Buffer[], uid?: string) => void) => ( buffer: Buffer[]) => {
-    sendUdp(buffer, this.uid);
   };
 }

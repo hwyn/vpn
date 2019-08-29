@@ -4,7 +4,6 @@
 import { EventEmitter} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
-const { LINK, DATA, CLOSE, ERROR, END } = COMMUNICATION_EVENT;
 
 export const globTitleSize: number = 80;
 
@@ -150,7 +149,7 @@ export class PackageSeparation extends EventEmitter {
 
   separation({ uid, type, data}: any) {
     const isEvent = Object.keys(COMMUNICATION_EVENT)
-      .filter((key: string) => !['DATA', 'LINK'].includes(key))
+      .filter((key: string) => !['DATA'].includes(key))
       .some((key: string) => COMMUNICATION_EVENT[key] === type);
     if (isEvent) {
       this.emitAsync('receiveEvent', { uid, type, data });
