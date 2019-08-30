@@ -25,7 +25,6 @@ class TcpConnection extends ProxyBasic {
   protected udpMessage(data: Buffer) {
     const { uid, buffer } = PackageUtil.getUid(data);
     const { cursor } = PackageUtil.packageSigout(buffer);
-    // console.log(`-- client pid:${process.pid} length: ${buffer.length} ${cursor} ${uid} --`);
     proxyProcess.responseMessage(data);
   }
 

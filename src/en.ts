@@ -1,14 +1,14 @@
-import { isCluster } from './server/constant';
+import { IS_CLUSER } from './server/constant';
 import cluster from 'cluster';
 import { cpus } from 'os';
 
-if (isCluster && cluster.isMaster) {
+if (IS_CLUSER && cluster.isMaster) {
   let workerLength = cpus().length;
   while (workerLength > 0) {
     cluster.fork();
     workerLength--;
   }
-  require('./server/master')
+  require('./server/master');
 } else {
   require('./server/en');
 }

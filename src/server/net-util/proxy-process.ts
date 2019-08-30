@@ -1,5 +1,6 @@
 import { ProxyEventEmitter } from "./proxy-event-emitter";
-import { PROCESS_EVENT_TYPE } from '../constant';
+import { PROCESS_EVENT_TYPE, IS_CLUSER } from '../constant';
+import { PackageUtil } from '../util';
 
 const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID } = PROCESS_EVENT_TYPE;
 
@@ -24,9 +25,11 @@ class ProxyProcess extends ProxyEventEmitter {
    */
   requestMessage(buffer: Buffer) {
     this.send({ event: UDP_REQUEST_MESSAGE, data: buffer });
+    if (!IS_CLUSER) {
+      const { buffer: data } = PackageUtil.getUid(buffer);
+      this.udpRequestMessage({ data });
+    }
   }
-
-  
 
   /**
    * 接收到服务端到消息
@@ -34,6 +37,10 @@ class ProxyProcess extends ProxyEventEmitter {
    */
   responseMessage(buffer: Buffer) {
     this.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
+    if (!IS_CLUSER) {
+      const { buffer: data } = PackageUtil.getUid(buffer);
+      this.udpResponseMessage({ data }); 
+    }
   }
 
   private udpResponseMessage({ data }: any) {
@@ -45,7 +52,7 @@ class ProxyProcess extends ProxyEventEmitter {
   }
   
   private send(message: any) {
-    this.source.send(message);
+    IS_CLUSER ? this.source.send(message) : null;
   }
 
   private onInit() {
