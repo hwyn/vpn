@@ -18,22 +18,32 @@ class DnsServerConnection {
     buf[3] = 1;
 
     const answer: DomainNameObject[] = [{
-      name: 'qq.com',
+      name: 'github-cloud.s3.amazonaws.com',
       ttl: 0,
       type: 12,
       class: 1,
       rdata: buf.toString('base64', 0, 4)
     }];
+    const _answer: DomainNameObject[] = notice.questionDomainObject.domains.map((domain) => {
+      return {
+        name: domain.name,
+        ttl: 0,
+        type: domain.type,
+        class: 1,
+        rdata: buf.toString('base64', 0, 4)
+      }
+    });
     const response = notice.getResponseNotice(
       notice.questionDomainObject.domains,
-      answer,
+      _answer,
       notice.authoritativeDomainObject.domains,
       notice.additionalDomainObject.domains,
     );
+    console.log('port:', rinfo.port);
+    console.log('port:', rinfo.address);
     console.log(new Notice(response).questionDomainObject);
     console.log(new Notice(response).answerDomainObject);
-    const client = createSocket('udp4');
-    // client.send(response, rinfo.port, rinfo.address);
+    dnsServer.write(response, rinfo.port, rinfo.address);
   }
 
   call = () => (data: Buffer, rinfo: RemoteInfo) => this.connectionListener(data, rinfo);
@@ -42,3 +52,4 @@ class DnsServerConnection {
 const dnsServer = new ProxyUdpServer(53);
 dnsServer.on('listening', () => console.log(`dns server listening 53 port`));
 dnsServer.on('data', new DnsServerConnection().call());
+dnsServer.on('error', (error: Error) => console.log(error));
