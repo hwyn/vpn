@@ -1,11 +1,11 @@
-import { BufferUtil, EventEmitter, hasOwnProperty } from '../util/index';
-import {start} from "repl";
+import { EventEmitter, hasOwnProperty } from '../util/index';
 
 export type DomainNameObject = { 
   name: string, 
   type: number, 
   class: number,
   ttl?: number;
+  rdLength?: number;
   rdata?: string;
 };
 
@@ -69,6 +69,7 @@ class ReadDomainInfo extends EventEmitter {
       domainObject.ttl = buffer.readUInt32BE(this.endOffset);
       this.endOffset += 4;
       const length = buffer.readUInt16BE(this.endOffset);
+      domainObject.rdLength = length;
       this.endOffset += 2;
       domainObject.rdata = buffer.toString('base64', this.endOffset, this.endOffset + length);
       this.endOffset += length;
@@ -77,6 +78,13 @@ class ReadDomainInfo extends EventEmitter {
 }
 
 class WriteDomainInfo extends EventEmitter {
+  private defaultObject: DomainNameObject = {
+    name: '',
+    type: 1,
+    class: 1,
+    ttl: 0,
+    rdata: Buffer.alloc(0).toString('base64')
+  };
   protected domainPoint: { [key: string]: number } = {};
   protected startOffset: number;
   protected endOffset: number;
@@ -119,23 +127,13 @@ class WriteDomainInfo extends EventEmitter {
     domans.forEach(({ type, class: kclass, name }) => this.writeDomainName(name, type, kclass));
     return { start: this.startOffset, end: this.endOffset, buffer: this.buffer };
   }
-}
-
-class WriteDomainRRInfo extends WriteDomainInfo {
-  private defaultObject: DomainNameObject = {
-    name: '',
-    type: 1,
-    class: 1,
-    ttl: 0,
-    rdata: Buffer.alloc(0).toString('base64')
-  };
 
   public writeRR(domans: DomainNameObject[], start: number): { buffer: Buffer, start: number, end: number} {
     const buffer = this.buffer;
     this.startOffset = this.endOffset = start;
     this.domainPoint = {};
     domans.forEach((domainInfo: DomainNameObject) => {
-      const { name, type, class: kclass, ttl, rdata} = { ...this.defaultObject, ...domainInfo };
+      const { name, type, class: kclass, ttl, rdata } = { ...this.defaultObject, ...domainInfo };
       this.writeDomainName(name, type, kclass);
       buffer.writeUInt32BE(ttl, this.endOffset);
       this.endOffset += 4;
@@ -162,7 +160,7 @@ export class Notice extends EventEmitter {
 
   getResponseNotice(question: DomainNameObject[], answer: DomainNameObject[], authoritative: DomainNameObject[], additional: DomainNameObject[]) {
     const responseNotice = Buffer.alloc(1024);
-    const questionWrite = new WriteDomainRRInfo(responseNotice);
+    const questionWrite = new WriteDomainInfo(responseNotice);
     responseNotice.writeUInt16BE(this.transactionID, 0);
     responseNotice.writeUInt16BE(
       1 << 15 | 0 << 11 | 0 << 10 | 0 << 9 | 1 << 8 | 0 << 7 | 0 << 4 | 0
