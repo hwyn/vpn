@@ -74,7 +74,7 @@ class TcpConnection extends ProxyBasic {
       tcpEvent.end();
       console.log('socketMap.size', this.socketMap.size);
     });
-  }
+  };
 
   call =  ()  => (clientSocket: ProxySocket) => {
     clientSocket.once('data', this.connectionListener(uuid(), clientSocket));

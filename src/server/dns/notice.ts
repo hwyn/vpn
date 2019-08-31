@@ -1,8 +1,9 @@
 import { EventEmitter, hasOwnProperty } from '../util/index';
 
 export type DomainNameObject = { 
-  name: string, 
-  type: number, 
+  name: string,
+  labelCount?: number;
+  type: number,
   class: number,
   ttl?: number;
   rdLength?: number;
@@ -26,15 +27,14 @@ class ReadDomainInfo extends EventEmitter {
     let length: number = 0;
     while ((length = buffer.readUInt8(offset++)) > 0) {
       if ((length & 0xC0) == 0xC0) {
-        endOffset = offset + 1;
+        endOffset = endOffset || offset + 1;
         offset = ((length & (~0xC0)) << 8) | buffer.readUInt8(offset);
         continue;
       }
       domainNameArr.push(buffer.toString('ascii', offset, offset + length));
-      endOffset ? offset = endOffset : offset += length;
-      endOffset = void(0);
+      offset += length;
     }
-    this.endOffset =  offset;
+    this.endOffset =  endOffset || offset;
     return domainNameArr.join('.');
   }
 
@@ -103,16 +103,16 @@ class WriteDomainInfo extends EventEmitter {
 
   protected writeDomainName(domainName: string, type: number, kclass: number) {
     const buffer = this.buffer;
-    domainName.split('.').forEach((name: string) => {
-      if (hasOwnProperty(this.domainPoint, name)) {
-        this.resetPointInfo(name);
-      } else {
-        this.domainPoint[name] = this.endOffset;
+    if (hasOwnProperty(this.domainPoint, domainName)) {
+      this.resetPointInfo(domainName);
+    } else {
+      this.domainPoint[domainName] = this.endOffset;
+      domainName.split('.').forEach((name: string) => {
         const length = buffer.write(name, this.endOffset + 1, 'ascii');
         buffer.writeUInt8(length, this.endOffset);
         this.endOffset += length + 1;
-      }
-    });
+      });
+    }
     buffer.writeUInt8(0, this.endOffset);
     this.endOffset += 1;
     buffer.writeUInt16BE(type, this.endOffset);
@@ -141,6 +141,7 @@ class WriteDomainInfo extends EventEmitter {
       buffer.writeUInt16BE(length, this.endOffset);
       this.endOffset += 2 + length;
     });
+    console.log('endOffset', this.endOffset);
     return { start: this.startOffset, end: this.endOffset, buffer: this.buffer };
   }
 }
@@ -186,7 +187,7 @@ export class Notice extends EventEmitter {
   }
   // qr 查询/响应标志 0 查询 1 响应 1bit
   get qr(): number {
-    return ((0x08 << 12) & this.flags) >> 12;
+    return ((0x01 << 15) & this.flags) >> 15;
   }
   // 	0表示标准查询，1表示反向查询，2表示服务器状态请求 4bit
   get opcode(): number {
@@ -194,19 +195,19 @@ export class Notice extends EventEmitter {
   }
   // 表示授权回答 1bit
   get aa(): number {
-    return ((0x08 << 10) & this.flags) >> 10;
+    return ((0x01 << 10) & this.flags) >> 10;
   }
   // 表示可截断的 1bit
   get tc(): number {
-    return ((0x08 << 9) & this.flags) >> 9;
+    return ((0x01 << 9) & this.flags) >> 9;
   }
   // 表示期望递归 1bit
   get rd(): number {
-    return ((0x08 << 8) & this.flags) >> 8;
+    return ((0x01 << 8) & this.flags) >> 8;
   }
   // 表示可用递归 1bit
   get ra(): number {
-    return ((0x08 << 7) & this.flags) >> 7;
+    return ((0x01 << 7) & this.flags) >> 7;
   }
   // 表示返回码，0表示没有差错，3表示名字差错，2表示服务器错误（Server Failure） 4bit
   get rcode(): number {

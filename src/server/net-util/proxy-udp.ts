@@ -25,8 +25,8 @@ export class ProxyUdpServer extends ProxyEventEmitter {
     });
   }
 
-  write(message: Buffer, port: number, host: string) {
-    ths.udpServer.send(message, port, host);
+  write(message: Buffer, port: number, address: string) {
+    this.udpServer.send(message, port, address);
   }
 
   listen(port: number) {
