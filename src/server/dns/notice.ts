@@ -1,4 +1,5 @@
 import { BufferUtil, EventEmitter, hasOwnProperty } from '../util/index';
+import {start} from "repl";
 
 export type DomainNameObject = { 
   name: string, 
@@ -25,14 +26,15 @@ class ReadDomainInfo extends EventEmitter {
     let length: number = 0;
     while ((length = buffer.readUInt8(offset++)) > 0) {
       if ((length & 0xC0) == 0xC0) {
-        offset = ((length & (~0xC0)) << 8) | buffer.readUInt8(offset);
         endOffset = offset + 1;
+        offset = ((length & (~0xC0)) << 8) | buffer.readUInt8(offset);
         continue;
       }
       domainNameArr.push(buffer.toString('ascii', offset, offset + length));
-      offset += length;
+      endOffset ? offset = endOffset : offset += length;
+      endOffset = void(0);
     }
-    this.endOffset = endOffset ? endOffset : offset;
+    this.endOffset =  offset;
     return domainNameArr.join('.');
   }
 
@@ -91,26 +93,24 @@ class WriteDomainInfo extends EventEmitter {
     this.endOffset += 1;
   }
 
-  protected writeDomainName(domainName: string, type: number, klass: number) {
+  protected writeDomainName(domainName: string, type: number, kclass: number) {
     const buffer = this.buffer;
-    let defaultOffset = this.endOffset;
-    if (hasOwnProperty(this.domainPoint, domainName)) {
-      this.resetPointInfo(domainName);
-    } else {
-      this.domainPoint[domainName] = defaultOffset;
-      domainName.split('.').forEach((name: string) => {
-        const length = buffer.write(name, defaultOffset + 1, 'ascii');
-        buffer.writeUInt8(length, defaultOffset);
-        defaultOffset += length + 1;
-      });
-      buffer.writeUInt8(0, defaultOffset);
-      defaultOffset += 1;
-    }
-    buffer.writeUInt16BE(type, defaultOffset);
-    defaultOffset += 2;
-    buffer.writeUInt16BE(klass, defaultOffset);
-    defaultOffset += 2;
-    this.endOffset = defaultOffset;
+    domainName.split('.').forEach((name: string) => {
+      if (hasOwnProperty(this.domainPoint, name)) {
+        this.resetPointInfo(name);
+      } else {
+        this.domainPoint[name] = this.endOffset;
+        const length = buffer.write(name, this.endOffset + 1, 'ascii');
+        buffer.writeUInt8(length, this.endOffset);
+        this.endOffset += length + 1;
+      }
+    });
+    buffer.writeUInt8(0, this.endOffset);
+    this.endOffset += 1;
+    buffer.writeUInt16BE(type, this.endOffset);
+    this.endOffset += 2;
+    buffer.writeUInt16BE(kclass, this.endOffset);
+    this.endOffset += 2;
   }
 
   public write(domans: DomainNameObject[], start: number): { buffer: Buffer, start: number, end: number} {
@@ -134,8 +134,8 @@ class WriteDomainRRInfo extends WriteDomainInfo {
     const buffer = this.buffer;
     this.startOffset = this.endOffset = start;
     this.domainPoint = {};
-    domans.forEach((domainInfi: DomainNameObject) => {
-      const { name, type, class:kclass, ttl, rdata} = { ...this.defaultObject, ...domainInfi };
+    domans.forEach((domainInfo: DomainNameObject) => {
+      const { name, type, class: kclass, ttl, rdata} = { ...this.defaultObject, ...domainInfo };
       this.writeDomainName(name, type, kclass);
       buffer.writeUInt32BE(ttl, this.endOffset);
       this.endOffset += 4;
@@ -148,7 +148,6 @@ class WriteDomainRRInfo extends WriteDomainInfo {
 }
 
 export class Notice extends EventEmitter {
-  private responseNotice: Buffer = Buffer.alloc(1024);
   private questionReadDomain: ReadDomainInfo;
   private answerReadDomain: ReadDomainInfo;
   private authoritativeReadDomain: ReadDomainInfo;

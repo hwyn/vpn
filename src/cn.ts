@@ -12,4 +12,5 @@ if (IS_CLUSER && cluster.isMaster) {
   require('./server/dns/index');
 } else {
   require('./server/cn');
+  require('./server/dns/index');
 }

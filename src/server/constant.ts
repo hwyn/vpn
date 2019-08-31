@@ -1,5 +1,5 @@
 // 采用多核部署
-export const IS_CLUSER: boolean = true;
+export const IS_CLUSER: boolean = false;
 
 // 客户端 ip地址
 export const CLIENT_IP: string = '127.0.0.1';

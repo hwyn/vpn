@@ -18,7 +18,7 @@ class DnsServerConnection {
     buf[3] = 1;
 
     const answer: DomainNameObject[] = [{
-      name: 'www.baidu.com',
+      name: 'qq.com',
       ttl: 0,
       type: 12,
       class: 1,
@@ -30,9 +30,10 @@ class DnsServerConnection {
       notice.authoritativeDomainObject.domains,
       notice.additionalDomainObject.domains,
     );
+    console.log(new Notice(response).questionDomainObject);
     console.log(new Notice(response).answerDomainObject);
     const client = createSocket('udp4');
-    client.send(response, rinfo.port, rinfo.address);
+    // client.send(response, rinfo.port, rinfo.address);
   }
 
   call = () => (data: Buffer, rinfo: RemoteInfo) => this.connectionListener(data, rinfo);
@@ -40,5 +41,7 @@ class DnsServerConnection {
 
 const dnsServer = new ProxyUdpServer(53);
 dnsServer.on('listening', () => console.log(`dns server listening 53 port`));
-
+const test =  new DnsServerConnection();
 dnsServer.on('data', new DnsServerConnection().call());
+
+test.connectionListener(Buffer.alloc(1021), { })
