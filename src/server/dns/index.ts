@@ -41,7 +41,4 @@ class DnsServerConnection {
 
 const dnsServer = new ProxyUdpServer(53);
 dnsServer.on('listening', () => console.log(`dns server listening 53 port`));
-const test =  new DnsServerConnection();
 dnsServer.on('data', new DnsServerConnection().call());
-
-test.connectionListener(Buffer.alloc(1021), { })
