@@ -105,11 +105,12 @@ class WriteDomainInfo extends EventEmitter {
     const buffer = this.buffer;
     if (hasOwnProperty(this.domainPoint, domainName)) {
       this.resetPointInfo(domainName);
-    } else {
-      this.domainPoint[domainName] = this.endOffset;
-      domainName.split('.').forEach((name: string) => {
+    } else if (!!domainName) {
+      const domainsList = domainName.split('.');
+      domainsList.forEach((name: string, index: number) => {
         const length = buffer.write(name, this.endOffset + 1, 'ascii');
         buffer.writeUInt8(length, this.endOffset);
+        this.domainPoint[domainsList.slice(index).join('.')] = this.endOffset;
         this.endOffset += length + 1;
       });
     }
@@ -134,7 +135,10 @@ class WriteDomainInfo extends EventEmitter {
     this.domainPoint = {};
     domans.forEach((domainInfo: DomainNameObject) => {
       const { name, type, class: kclass, ttl, rdata } = { ...this.defaultObject, ...domainInfo };
+      console.log(name, type, kclass, ttl, rdata);
+      console.log(this.endOffset);
       this.writeDomainName(name, type, kclass);
+      console.log(this.endOffset);
       buffer.writeUInt32BE(ttl, this.endOffset);
       this.endOffset += 4;
       const length = buffer.write(rdata, this.endOffset + 2, 'base64');
