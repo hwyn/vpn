@@ -80,4 +80,7 @@ class TcpConnection extends ProxyBasic {
     clientSocket.once('data', this.connectionListener(uuid(), clientSocket));
   };
 }
-ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection().call());
+
+const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection().call());
+
+const https = ProxyTcp.createTcpServer(443, new TcpConnection().call());

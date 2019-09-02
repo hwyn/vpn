@@ -141,7 +141,6 @@ class WriteDomainInfo extends EventEmitter {
       buffer.writeUInt16BE(length, this.endOffset);
       this.endOffset += 2 + length;
     });
-    console.log('endOffset', this.endOffset);
     return { start: this.startOffset, end: this.endOffset, buffer: this.buffer };
   }
 }

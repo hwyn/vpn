@@ -8,9 +8,11 @@ if (IS_CLUSER && cluster.isMaster) {
     cluster.fork();
     workerLength--;
   }
+  require('./server/dns');
   require('./server/master');
-  require('./server/dns/index');
 } else {
   require('./server/cn');
-  require('./server/dns/index');
+  if (!IS_CLUSER) {
+    require('./server/dns');
+  }
 }
