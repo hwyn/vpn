@@ -2,11 +2,11 @@ import { DomainNameObject } from './notice';
 import { hasOwnProperty } from '../util';
 
 const proxy = {
-  // '*.google.com': '10.248.63.76',
-  '*.baidu.com': '10.248.63.76'
-}
+  '*.google.com': '10.248.63.76',
+  '*.baidu.com': '10.248.63.76',
+};
 
-const encodeAddress = (address: string) => { // {{{
+const encodeAddress = (address: string) => {
   const buf = Buffer.alloc(4);
   const split = address.split(".");
   if (split.length < 4) return false;

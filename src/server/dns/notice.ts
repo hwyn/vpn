@@ -1,11 +1,12 @@
 import { EventEmitter, hasOwnProperty } from '../util/index';
 
-export type DomainNameObject = { 
+export type DomainNameObject = {
   name: string,
   labelCount?: number;
   type: number,
   class: number,
   ttl?: number;
+  cname?: string;
   rdLength?: number;
   rdata?: string;
 };
@@ -34,7 +35,7 @@ class ReadDomainInfo extends EventEmitter {
       domainNameArr.push(buffer.toString('ascii', offset, offset + length));
       offset += length;
     }
-    this.endOffset =  endOffset || offset;
+    this.endOffset = endOffset || offset;
     return domainNameArr.join('.');
   }
 
@@ -71,8 +72,12 @@ class ReadDomainInfo extends EventEmitter {
       const length = buffer.readUInt16BE(this.endOffset);
       domainObject.rdLength = length;
       this.endOffset += 2;
-      domainObject.rdata = buffer.toString('base64', this.endOffset, this.endOffset + length);
-      this.endOffset += length;
+      if (domainObject.type === 5) {
+        domainObject.cname = this.readDomainName(this.endOffset);
+      } else {
+        domainObject.rdata = buffer.toString('base64', this.endOffset, this.endOffset + length);
+        this.endOffset += length;
+      }
     });
   }
 }
@@ -101,51 +106,65 @@ class WriteDomainInfo extends EventEmitter {
     this.endOffset += 1;
   }
 
+  protected writeDomain(domainName: string) {
+    const buffer = this.buffer;
+    const start = this.endOffset;
+    let isPointEnd = false;
+    let domainsList;
+    if (!!domainName && (domainsList = domainName.split('.'))) {
+      while (domainsList.length) {
+        const splitName = domainsList.join('.');
+        if (isPointEnd = hasOwnProperty(this.domainPoint, splitName)) {
+          this.resetPointInfo(splitName);
+          break;
+        } else {
+          const length = buffer.write(domainsList.shift(), this.endOffset + 1, 'ascii');
+          buffer.writeUInt8(length, this.endOffset);
+          this.domainPoint[splitName] = this.endOffset;
+          this.endOffset += length + 1;
+        }
+      }
+    }
+    if (!isPointEnd) {
+      buffer.writeUInt8(0, this.endOffset);
+      this.endOffset += 1;
+    }
+    return this.endOffset - start;
+  }
+
   protected writeDomainName(domainName: string, type: number, kclass: number) {
     const buffer = this.buffer;
-    if (hasOwnProperty(this.domainPoint, domainName)) {
-      this.resetPointInfo(domainName);
-    } else if (!!domainName) {
-      const domainsList = domainName.split('.');
-      domainsList.forEach((name: string, index: number) => {
-        const length = buffer.write(name, this.endOffset + 1, 'ascii');
-        buffer.writeUInt8(length, this.endOffset);
-        this.domainPoint[domainsList.slice(index).join('.')] = this.endOffset;
-        this.endOffset += length + 1;
-      });
-    }
-    buffer.writeUInt8(0, this.endOffset);
-    this.endOffset += 1;
+    this.writeDomain(domainName);
     buffer.writeUInt16BE(type, this.endOffset);
     this.endOffset += 2;
     buffer.writeUInt16BE(kclass, this.endOffset);
     this.endOffset += 2;
   }
 
-  public write(domans: DomainNameObject[], start: number): { buffer: Buffer, start: number, end: number} {
+  public write(domans: DomainNameObject[], start: number, callback?: any): { buffer: Buffer, start: number, end: number } {
     this.startOffset = this.endOffset = start;
-    this.domainPoint = {};
-    domans.forEach(({ type, class: kclass, name }) => this.writeDomainName(name, type, kclass));
+    domans.forEach((domainInfo: DomainNameObject) => {
+      const { type, class: kclass, name } = domainInfo;
+      this.writeDomainName(name, type, kclass);
+      callback ? callback(domainInfo) : null;
+    });
     return { start: this.startOffset, end: this.endOffset, buffer: this.buffer };
   }
 
-  public writeRR(domans: DomainNameObject[], start: number): { buffer: Buffer, start: number, end: number} {
+  public writeRR(domans: DomainNameObject[], start: number): { buffer: Buffer, start: number, end: number } {
     const buffer = this.buffer;
+    let lengthOffset: number;
     this.startOffset = this.endOffset = start;
-    this.domainPoint = {};
-    domans.forEach((domainInfo: DomainNameObject) => {
-      const { name, type, class: kclass, ttl, rdata } = { ...this.defaultObject, ...domainInfo };
-      console.log(name, type, kclass, ttl, rdata);
-      console.log(this.endOffset);
-      this.writeDomainName(name, type, kclass);
-      console.log(this.endOffset);
+    return this.write(domans, start, (domainInfo: DomainNameObject) => {
+      const { name, type, class: kclass, ttl, rdata, cname } = { ...this.defaultObject, ...domainInfo };
       buffer.writeUInt32BE(ttl, this.endOffset);
       this.endOffset += 4;
-      const length = buffer.write(rdata, this.endOffset + 2, 'base64');
-      buffer.writeUInt16BE(length, this.endOffset);
-      this.endOffset += 2 + length;
+      lengthOffset = this.endOffset;
+      this.endOffset += 2;
+      const length = type === 5 ? this.writeDomain(cname) : buffer.write(rdata, this.endOffset, 'base64');
+      buffer.writeUInt16BE(length, lengthOffset);
+      type === 5 ? null : this.endOffset += length;
     });
-    return { start: this.startOffset, end: this.endOffset, buffer: this.buffer };
   }
 }
 
@@ -168,7 +187,7 @@ export class Notice extends EventEmitter {
     responseNotice.writeUInt16BE(this.transactionID, 0);
     responseNotice.writeUInt16BE(
       1 << 15 | 0 << 11 | 0 << 10 | 0 << 9 | 1 << 8 | 0 << 7 | 0 << 4 | 0
-    , 2);
+      , 2);
     responseNotice.writeUInt16BE(question.length, 4);
     responseNotice.writeUInt16BE(answer.length, 6);
     responseNotice.writeUInt16BE(authoritative.length, 8);
@@ -177,6 +196,17 @@ export class Notice extends EventEmitter {
     offset = questionWrite.writeRR(answer, offset).end;
     offset = questionWrite.writeRR(authoritative, offset).end;
     questionWrite.writeRR(additional, offset);
+
+    // let bufferArray = [];
+    // for (let i = 0; i < responseNotice.length ; i++) {
+    //   bufferArray.push('0x' + ('00' + responseNotice[i].toString(16)).replace(/^.*(.{2})$/g, '$1'));
+    //   if ((i + 1) % 16 === 0) {
+    //     console.log(bufferArray.join(','));
+    //     bufferArray = [];
+    //   }
+    // }
+    // console.log(bufferArray);
+    // console.log('===============');
     return responseNotice;
   }
 
