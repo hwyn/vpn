@@ -15,7 +15,7 @@ import {
 const { UDP_RESPONSE_MESSAGE } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
-  constructor() {
+  constructor(private port: number) {
     super('cn');
     this.createUdpClient(SERVER_IP, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
     this.createUdpServer(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
@@ -58,7 +58,7 @@ class TcpConnection extends ProxyBasic {
     packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
     
     tcpEvent.on('data', packageManage.agentResponseCall());
-    tcpEvent.on('connect', packageManage.clientLinkCall(data));
+    tcpEvent.on('connect', packageManage.clientLinkCall(this.port, data));
     tcpEvent.on('error', () => clientSocket.end());
 
     clientSocket.on('data', packageManage.clientDataCall());
@@ -81,6 +81,6 @@ class TcpConnection extends ProxyBasic {
   };
 }
 
-const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection().call());
+const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection(CLIENT_TCP_HTTP_PORT).call());
 
-const https = ProxyTcp.createTcpServer(443, new TcpConnection().call());
+const https = ProxyTcp.createTcpServer(443, new TcpConnection(443).call());

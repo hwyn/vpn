@@ -10,6 +10,7 @@ const { END } = COMMUNICATION_EVENT;
 export const globTitleSize: number = 80;
 
 export class PackageUtil {
+  static PORT_BYTE_SIZE: 16 = 16;
   static UID_BYTE_SIZE: 8 = 8;
   static TYPE_BYTE_SIZE: 8 = 8;
   static CURSOR_SIZE: 16 = 16;
@@ -26,6 +27,20 @@ export class PackageUtil {
     const [uidLength] = BufferUtil.readGroupUInt(buffer, [UID_BYTE_SIZE]);
     const [ uid, packageBuf ] = BufferUtil.unConcat(buffer, [uidLength], UID_BYTE_SIZE);
     return { uid: uid.toString(), buffer: packageBuf };
+  }
+
+  static bindPort(port: number, buffer: Buffer): Buffer {
+    const { PORT_BYTE_SIZE } = PackageUtil;
+    return BufferUtil.concat(BufferUtil.writeGrounUInt([port], [PORT_BYTE_SIZE]), buffer);
+  }
+
+  static getPort(buffer: Buffer): { port: number, buffer: Buffer} {
+    const { PORT_BYTE_SIZE } = PackageUtil;
+    const [ portBuffer, data ] = BufferUtil.unConcat(buffer, [PORT_BYTE_SIZE]);
+    return {
+      port: portBuffer.readUInt16BE(0),
+      buffer: data
+    };
   }
 
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
@@ -150,7 +165,7 @@ export class PackageSeparation extends EventEmitter {
 
   separation({ uid, type, data}: any) {
     const isEvent = Object.keys(COMMUNICATION_EVENT)
-      .filter((key: string) => !['DATA'].includes(key))
+      .filter((key: string) => !['DATA', 'LINK'].includes(key))
       .some((key: string) => COMMUNICATION_EVENT[key] === type);
     if (isEvent) {
       this.emitAsync('receiveEvent', { uid, type, data });

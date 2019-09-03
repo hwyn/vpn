@@ -33,8 +33,9 @@ export class BrowserManage extends PackageManage{
     this.packageSeparation.splitPackage(buffer);
   }
 
-  clientLinkCall = (buffer: Buffer) => () => {
-    this.packageSeparation.mergePackage(LINK, this.uid, buffer);
+  clientLinkCall = (port: number, buffer: Buffer) => () => {
+    const data = PackageUtil.bindPort(port, buffer);
+    this.packageSeparation.mergePackage(LINK, this.uid, data);
     this.packageSeparation.immediatelySend(this.uid);
   }
 

@@ -2,6 +2,7 @@ import { RemoteInfo } from 'dgram';
 import { ProxyUdpServer } from '../net-util';
 import { Notice, DomainNameObject } from './notice';
 import { getProxyAddress } from './proxy.config';
+import { CN_DNS_ADDRESS } from '../constant';
 
 // .replace(/([\S]+)/g, '0x$1,')
 
@@ -12,15 +13,16 @@ class DnsServerConnection {
     const notice = new Notice(data);
     if (notice.qr === 0) {
       this.idToRinfoMap.set(notice.transactionID, rinfo);
-      return dnsServer.write(data, 53, '10.248.33.31');
+      return dnsServer.write(data, 53, CN_DNS_ADDRESS);
     }
 
-    const answerDomainList: any = notice.answerDomainObject.domains.map((item: DomainNameObject) => {
-      return getProxyAddress(item);
-    }).filter((item: any) => !!item).map((item: DomainNameObject) => ({
-      ...item,
-      ttl: 0
-    }));
+    const answerDomainList: any = notice.answerDomainObject.domains
+      .map((item: DomainNameObject) => 
+        getProxyAddress(item)
+      ).filter((item: any) => !!item).map((item: DomainNameObject) => ({
+        ...item,
+        ttl: 0
+      }));
 
     const responceBuffer = notice.getResponseNotice(
       notice.questionDomainObject.domains,
@@ -37,21 +39,21 @@ class DnsServerConnection {
   
 
     const responceNotice = new Notice(responceBuffer);
-    console.log('transactionID', responceNotice.transactionID);
-    console.log('source-answer', notice.answerDomainObject);
-    console.log('flags', responceNotice.flags);
-    console.log('qr', responceNotice.qr);
-    console.log('opcode', responceNotice.opcode);
-    console.log('aa', responceNotice.aa);
-    console.log('tc', responceNotice.rd);
-    console.log('rd', responceNotice.rd);
-    console.log('ra', responceNotice.ra);
-    console.log('rcode', responceNotice.rcode);
-    console.log('rd', responceNotice.rd);
-    console.log('questionDomainObject', responceNotice.questionDomainObject);
+    // console.log('transactionID', responceNotice.transactionID);
+    // console.log('source-answer', notice.answerDomainObject);
+    // console.log('flags', responceNotice.flags);
+    // console.log('qr', responceNotice.qr);
+    // console.log('opcode', responceNotice.opcode);
+    // console.log('aa', responceNotice.aa);
+    // console.log('tc', responceNotice.rd);
+    // console.log('rd', responceNotice.rd);
+    // console.log('ra', responceNotice.ra);
+    // console.log('rcode', responceNotice.rcode);
+    // console.log('rd', responceNotice.rd);
+    // console.log('questionDomainObject', responceNotice.questionDomainObject);
     console.log('answerDomainObject', responceNotice.answerDomainObject);
-    console.log('authoritativeDomainObject', responceNotice.authoritativeDomainObject);
-    console.log('additionalDomainObject', responceNotice.additionalDomainObject);
+    // console.log('authoritativeDomainObject', responceNotice.authoritativeDomainObject);
+    // console.log('additionalDomainObject', responceNotice.additionalDomainObject);
   }
 
   call = () => (data: Buffer, rinfo: RemoteInfo) => this.connectionListener(data, rinfo);

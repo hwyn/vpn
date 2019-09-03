@@ -1,6 +1,7 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, getHttp, getHttpsClientHello } from '../util';
 import { ProxyBasic } from '../proxy-basic';
+import { getAddress } from './domain-to-address';
 import { 
   SERVER_TCP_PORT,
   SERVER_UDP_INITIAL_PORT,
@@ -41,13 +42,13 @@ class TcpConnection extends ProxyBasic {
 
   private connectionListener = (
     { tcpEvent, packageSeparation, packageManage }: { tcpEvent: ProxySocket, packageSeparation: PackageSeparation, packageManage: ServerManage  }
-  ) => ({uid, data: buffer}: { uid: string, data: Buffer}) => {
-    // const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 3000);
+  ) => async ({uid, data: portBuffer}: { uid: string, data: Buffer}) => {
+    const { port, buffer } = PackageUtil.getPort(portBuffer);
+    const { host } = port === 443 ? getHttpsClientHello(buffer) : getHttp(buffer);
+    const address = await getAddress(host);
     console.log(`--------server connection ${ uid }----------`);
-    const match = buffer.toString().match(/([^\r\n]+)/g);
-    console.log(`${match[0]} -- ${match[1]}`);
-
-    const clientSocket = ProxySocket.createSocketClient('127.0.0.1', 4600);
+    console.log(`Host: ${host} address: ${address} -- ${port}`);
+    const clientSocket = ProxySocket.createSocketClient(address, port);
     const abnormalManage = new AbnormalManage(uid, tcpEvent, packageSeparation);
 
     this.socketMap.set(uid, clientSocket);

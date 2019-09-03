@@ -2,8 +2,10 @@ import { DomainNameObject } from './notice';
 import { hasOwnProperty } from '../util';
 
 const proxy = {
-  '*.google.com': '10.248.63.76',
+  // '*.google.com': '10.248.63.76',
   '*.baidu.com': '10.248.63.76',
+  'nodejs.cn': '10.248.63.76',
+  'www.wshifen.com': '10.248.63.76',
 };
 
 const encodeAddress = (address: string) => {
@@ -17,7 +19,7 @@ const encodeAddress = (address: string) => {
 }
 
 export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | boolean => {
-  const { name } = domain;
+  const { name, type, class: kClass } = domain;
   const parts = name.split('.');
   let rdata;
   if (name === 'localhost' || /^\d{3}\.\d{3}\.\d{3}\.\d{3}$/.test(name) || domain.class !== 1) {
@@ -37,11 +39,12 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
     }
   }
 
-  if (!rdata) {
-    return domain;
+  if (rdata && type == 1 && kClass === 1) {
+    return { ...domain, rdata } as DomainNameObject;
   }
+
   if (domain.type === 28) {
     return false;
   }
-  return { ...domain, rdata } as DomainNameObject;
+  return domain;
 }

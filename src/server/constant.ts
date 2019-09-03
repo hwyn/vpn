@@ -19,9 +19,12 @@ export const CLIENT_TCP_HTTP_PORT: number = 80;
 export const CLIENT_TCP_HTTPS_PORT: number = 443;
 // 服务端tcp 监听端口
 export const SERVER_TCP_PORT: number = 8000;
-
 // 数据包最大size
 export const PACKAGE_MAX_SIZE: number = 3920;
+// 客户端 dns 地址
+export const CN_DNS_ADDRESS = '10.248.33.31';
+// 服务端 dns 地址
+export const EN_DNS_ADDRESS = '10.248.33.31';
 
 // 进程通讯事件
 export const PROCESS_EVENT_TYPE = {
@@ -33,6 +36,7 @@ export const PROCESS_EVENT_TYPE = {
 
 // socket通讯事件
 export const COMMUNICATION_EVENT = {
+  LINK: 0,
   DATA: 1, 
   CLOSE: 2, 
   ERROR: 3, 
