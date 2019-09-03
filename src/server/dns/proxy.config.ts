@@ -3,7 +3,6 @@ import { hasOwnProperty } from '../util';
 
 const proxy = {
   // '*.google.com': '10.248.63.76',
-  '*' : '10.248.63.76',
   '*.baidu.com': '10.248.63.76',
   'nodejs.cn': '10.248.63.76',
   'www.wshifen.com': '10.248.63.76',
@@ -43,9 +42,5 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
   if (rdata && type == 1 && kClass === 1) {
     return { ...domain, rdata } as DomainNameObject;
   }
-
-  if (domain.type === 28) {
-    return false;
-  }
-  return domain;
+  return domain.type === 28 ? false : domain;
 }

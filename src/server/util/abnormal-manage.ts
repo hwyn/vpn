@@ -25,7 +25,7 @@ export class AbnormalManage extends EventEmitter {
     }
   };
 
-  errorCall = () => () => {
+  errorCall = () => (error: Error) => {
     console.log(`-- error listening ${this.uid} --`);
     if (this.isNotEnd) {
       this.packageSeparation.sendEventPackage(this.uid, ERROR);

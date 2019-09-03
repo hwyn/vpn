@@ -37,8 +37,7 @@ class DnsServerConnection {
       this.idToRinfoMap.delete(notice.transactionID);
     }
   
-
-    const responceNotice = new Notice(responceBuffer);
+    // const responceNotice = new Notice(responceBuffer);
     // console.log('transactionID', responceNotice.transactionID);
     // console.log('source-answer', notice.answerDomainObject);
     // console.log('flags', responceNotice.flags);
@@ -51,7 +50,7 @@ class DnsServerConnection {
     // console.log('rcode', responceNotice.rcode);
     // console.log('rd', responceNotice.rd);
     // console.log('questionDomainObject', responceNotice.questionDomainObject);
-    console.log('answerDomainObject', responceNotice.answerDomainObject);
+    // console.log('answerDomainObject', responceNotice.answerDomainObject);
     // console.log('authoritativeDomainObject', responceNotice.authoritativeDomainObject);
     // console.log('additionalDomainObject', responceNotice.additionalDomainObject);
   }
@@ -60,8 +59,5 @@ class DnsServerConnection {
 }
 
 const dnsServer = new ProxyUdpServer(53);
-const test = new DnsServerConnection();
 dnsServer.on('listening', () => console.log(`dns server listening 53 port`));
 dnsServer.on('data', new DnsServerConnection().call());
-
-// test.connectionListener(null, null);
