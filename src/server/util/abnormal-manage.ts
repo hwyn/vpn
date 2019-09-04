@@ -37,7 +37,7 @@ export class AbnormalManage extends EventEmitter {
   }
 
   message = (proxySocket: ProxySocket) => ({ uid, data, type }: any) => {
-    console.log(`--messaage ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
+    console.log(`--message ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
     this.isNotEnd = false;
     proxySocket.end();
     this.emitAsync('end');

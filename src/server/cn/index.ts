@@ -63,8 +63,8 @@ class TcpConnection extends ProxyBasic {
 
     clientSocket.on('data', packageManage.clientDataCall());
     clientSocket.on('agent', packageManage.agentResponseCall());
-    clientSocket.on('end', abnormalManage.endCall());
-    clientSocket.on('close', abnormalManage.closeCall());
+    // clientSocket.on('end', abnormalManage.endCall());
+    // clientSocket.on('close', abnormalManage.closeCall());
     clientSocket.on('error', abnormalManage.errorCall());
     
     abnormalManage.on('end', () => {
