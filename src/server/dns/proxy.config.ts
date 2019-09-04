@@ -2,10 +2,12 @@ import { DomainNameObject } from './notice';
 import { hasOwnProperty } from '../util';
 
 const proxy = {
-  // '*.google.com': '10.248.63.76',
   '*.baidu.com': '10.248.63.76',
-  'nodejs.cn': '10.248.63.76',
-  'www.wshifen.com': '10.248.63.76',
+  '*.wshifen.com': '10.248.63.76',
+  '*.bdstatic.com': '10.248.63.76',
+  '*.gshifen.com': '10.248.63.76',
+  // '*': '10.248.63.76',
+  // '*.expressjs.com.cn': '10.248.63.76',
 };
 
 const encodeAddress = (address: string) => {
@@ -16,6 +18,15 @@ const encodeAddress = (address: string) => {
     buf[index] = parseInt(name);
   });
 	return buf.toString("base64", 0, 4);
+}
+
+const decordAddress = (rdata: string) => {
+  const buffer = Buffer.from(rdata, 'base64');
+  const address: any = [];
+  for(let i = 0; i < buffer.length; i++) {
+    address.push(buffer[i]);
+  }
+  return address.join('.');
 }
 
 export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | boolean => {
@@ -40,7 +51,9 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
   }
 
   if (rdata && type == 1 && kClass === 1) {
-    return { ...domain, rdata } as DomainNameObject;
+    console.log(domain.name);
+    console.log(decordAddress(domain.rdata));
+    return { ...domain, rdata: encodeAddress('127.0.0.1') } as DomainNameObject;
   }
   return domain.type === 28 ? false : domain;
 }

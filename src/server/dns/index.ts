@@ -37,8 +37,9 @@ class DnsServerConnection {
       this.idToRinfoMap.delete(notice.transactionID);
     }
   
-    // const responceNotice = new Notice(responceBuffer);
+    const responceNotice = new Notice(responceBuffer);
     // console.log('transactionID', responceNotice.transactionID);
+    // console.log('source-question', notice.questionDomainObject);
     // console.log('source-answer', notice.answerDomainObject);
     // console.log('flags', responceNotice.flags);
     // console.log('qr', responceNotice.qr);
@@ -50,7 +51,8 @@ class DnsServerConnection {
     // console.log('rcode', responceNotice.rcode);
     // console.log('rd', responceNotice.rd);
     // console.log('questionDomainObject', responceNotice.questionDomainObject);
-    // console.log('answerDomainObject', responceNotice.answerDomainObject);
+    // console.log('source', notice.answerDomainObject.domains);
+    // console.log('answerDomainObject', responceNotice.answerDomainObject.domains);
     // console.log('authoritativeDomainObject', responceNotice.authoritativeDomainObject);
     // console.log('additionalDomainObject', responceNotice.additionalDomainObject);
   }

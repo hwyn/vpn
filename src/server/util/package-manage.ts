@@ -18,13 +18,14 @@ export class PackageManage {
   ) { }
 
   distributeCall = (proxySocket: ProxySocket) => ({ data }: any) => {
+    console.log(`${this.type} ${this.uid}--------->${data.length}`);
     proxySocket.write(data);
   };
 }
 
 export class BrowserManage extends PackageManage{
   constructor(uid: string, packageSeparation: PackageSeparation) {
-    super(uid, packageSeparation,  'browser');
+    super(uid, packageSeparation,  'client');
   }
   
   agentResponseCall = () => (buffer: Buffer) => {
@@ -34,12 +35,14 @@ export class BrowserManage extends PackageManage{
   }
 
   clientLinkCall = (port: number, buffer: Buffer) => () => {
+    console.log(`client request ${this.uid}------>${buffer.length}`);
     const data = PackageUtil.bindPort(port, buffer);
     this.packageSeparation.mergePackage(LINK, this.uid, data);
     this.packageSeparation.immediatelySend(this.uid);
   }
 
   clientDataCall = () => (buffer: Buffer) => {
+    console.log(`client request ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
@@ -51,6 +54,7 @@ export class ServerManage extends PackageManage{
   }
 
   serverLinkCall = () => (buffer: any) => {
+    console.log(`server response ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
