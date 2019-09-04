@@ -14,21 +14,24 @@ export class AbnormalManage extends EventEmitter {
   endCall = () => () => {
     console.log(`-- end listening ${this.uid} --`);
     if (this.isNotEnd) {
-      this.packageSeparation.sendEventPackage(this.uid, END);
+      this.packageSeparation.sendEventPackage(this.uid, ERROR);
     }
   }
 
   closeCall = () => () => {
     console.log(`-- close listening ${this.uid} --`);
     if (this.isNotEnd) {
+      this.packageSeparation.sendEventPackage(this.uid, END);
       this.emitAsync('end');
     }
   };
 
   errorCall = () => (error: Error) => {
     console.log(`-- error listening ${this.uid} --`);
+    console.log(error);
     if (this.isNotEnd) {
       this.packageSeparation.sendEventPackage(this.uid, ERROR);
+      this.emitAsync('end');
     }
   };
 
