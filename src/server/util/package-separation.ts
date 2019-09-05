@@ -126,6 +126,8 @@ export class PackageSeparation extends EventEmitter {
     const { cursor, data, uid } =  PackageUtil.packageSigout(buffer);
     const isEvent = PackageUtil.isEventPackage(data);
     const splitList = this.splitList;
+    if (splitList.get(cursor)) return;
+
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     const type = isEvent ? PackageUtil.unEventPackage(data) : void(0);
     splitList.set(cursor, !isEvent ? data : this.packing(type, uid, Buffer.alloc(0)));
