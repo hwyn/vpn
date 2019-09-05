@@ -57,7 +57,7 @@ class TcpConnection extends ProxyBasic {
     packageSeparation.on('sendData', this.send(uid));
     packageSeparation.on('sendEvent', this.responseEvent(tcpEvent));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
-    packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
+    packageSeparation.on('receiveEvent', abnormalManage.message());
 
     tcpEvent.on('data', packageManage.agentRequestCall());
     tcpEvent.on('error', () => clientSocket.end());
