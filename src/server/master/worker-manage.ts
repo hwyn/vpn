@@ -25,16 +25,17 @@ export class WorkerManage extends EventEmitter {
     if (runWorker) {
       runWorker.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
     } else {
-      console.log('error--------->', runWorker);
+      console.log(`error----${cursor}----->${uid}`, runWorker);
     }
   }
 
   private distributionRequestWorker(event: any) {
     const { runWorker, buffer } = this.distributionWorker(event);
+    const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
       runWorker.send({ event: 'udp-request-message', data: buffer });
     } else {
-      console.log('error--------->', runWorker);
+      console.log(`error----${cursor}----->${uid}`, runWorker);
     }
   }
 

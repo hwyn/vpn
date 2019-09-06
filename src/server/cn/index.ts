@@ -47,7 +47,6 @@ class TcpConnection extends ProxyBasic {
     const packageSeparation = new PackageSeparation();
     const packageManage = new BrowserManage(uid, packageSeparation);
     const abnormalManage = new AbnormalManage(uid, tcpEvent, packageSeparation);
-  
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
