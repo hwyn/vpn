@@ -7,6 +7,7 @@
     "start": "ts-tools start runClient=false",
     "runCN": "ts-tools start webpackDir=webpack-cn runClient=false",
     "runEN": "ts-tools start webpackDir=webpack-en runClient=false",
+    "debug": "babel src --out-dir debug --watch --extensions \".ts,.tsx\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
