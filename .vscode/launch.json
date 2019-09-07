@@ -7,6 +7,14 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "debug vpn",
+            "preLaunchTask": "debug",
+            "sourceMaps": true,
+            "program": "${workspaceFolder}\\debug\\index.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "debug cn",
             "preLaunchTask": "debug",
             "sourceMaps": true,
