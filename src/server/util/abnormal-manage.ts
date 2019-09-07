@@ -3,7 +3,7 @@ import { PackageSeparation } from './package-separation';
 import { COMMUNICATION_EVENT } from '../constant';
 import { ProxySocket } from '../net-util';
 
-const { ERROR, END } = COMMUNICATION_EVENT;
+const { ERROR, END, CLOSE } = COMMUNICATION_EVENT;
 
 export class AbnormalManage extends EventEmitter {
   private isNotEnd: boolean = true;
@@ -14,14 +14,14 @@ export class AbnormalManage extends EventEmitter {
   endCall = () => () => {
     console.log(`-- end listening ${this.uid} --`);
     if (this.isNotEnd) {
-      this.packageSeparation.sendEventPackage(this.uid, ERROR);
+      this.packageSeparation.sendEventPackage(this.uid, END);
     }
   }
 
   closeCall = () => () => {
     console.log(`-- close listening ${this.uid} --`);
     if (this.isNotEnd) {
-      this.packageSeparation.sendEventPackage(this.uid, END);
+      this.packageSeparation.sendEventPackage(this.uid, CLOSE);
       this.emitAsync('end');
     }
   };
@@ -39,10 +39,11 @@ export class AbnormalManage extends EventEmitter {
     data.forEach((buffer: Buffer) => this.channel.write(buffer));
   }
 
-  message = (proxySocket: ProxySocket) => ({ uid, data, type }: any) => {
+  message = () => ({ uid, data, type }: any) => {
     console.log(`--message ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
     this.isNotEnd = false;
-    proxySocket.end();
-    this.emitAsync('end');
+    if ([CLOSE, END].includes(type)) {
+      this.emitAsync('end');
+    }
   }
 }

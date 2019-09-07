@@ -5,7 +5,7 @@ import { EventEmitter} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
 
-const { END } = COMMUNICATION_EVENT;
+const { END, CLOSE, ERROR } = COMMUNICATION_EVENT;
 
 export const globTitleSize: number = 80;
 
@@ -117,6 +117,7 @@ export class PackageSeparation extends EventEmitter {
       this.mergeCache = this.mergeCache.slice(PACKAGE_MAX_SIZE);
       mergeList.push(sendBuffer);
     }
+    
     mergeList.length !== 0 ?this.send(uid, mergeList) : null;
     return packageBuffer;
   }
@@ -125,6 +126,8 @@ export class PackageSeparation extends EventEmitter {
     const { cursor, data, uid } =  PackageUtil.packageSigout(buffer);
     const isEvent = PackageUtil.isEventPackage(data);
     const splitList = this.splitList;
+    if (splitList.get(cursor)) return;
+
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     const type = isEvent ? PackageUtil.unEventPackage(data) : void(0);
     splitList.set(cursor, !isEvent ? data : this.packing(type, uid, Buffer.alloc(0)));
@@ -140,11 +143,11 @@ export class PackageSeparation extends EventEmitter {
         const packageData = this.splitCache.slice(0, this.splitPageSize);
         const { uid, type: eventType, buffer } = this.unpacking(packageData);
         this.splitCache = this.splitCache.slice(this.splitPageSize);
-        this.separation({ uid, type: eventType, data: buffer });
         this.splitPageSize = void(0);
         if (this.splitCache.length >= size) {
           this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
         }
+        this.separation({ uid, type: eventType, data: buffer });
       }
       this.splitList.delete(this.splitCursor);
       this.splitCursor++;
@@ -181,8 +184,8 @@ export class PackageSeparation extends EventEmitter {
   }
 
   printLoseInfo(uid: string, cursor: number, type?: number) {
-    if (type === END || this.maxPackageCount) {
-      if (type === END) {
+    if ([END, CLOSE, ERROR].includes(type) || this.maxPackageCount) {
+      if ([END, CLOSE, ERROR].includes(type)) {
         this.maxPackageCount = cursor;
         this.lossPacketCount =  this.maxPackageCount - this.splitCursor - this.splitList.size + 1;
       } else {
@@ -190,7 +193,7 @@ export class PackageSeparation extends EventEmitter {
       }
     }
 
-    if (this.maxPackageCount && this.splitCursor  !== this.maxPackageCount) {
+    if (this.maxPackageCount && this.splitCursor  !== this.maxPackageCount && [CLOSE, ERROR].includes(type)) {
       console.log(`----------------${uid}-----------------`);
       console.log('maxPackageCount:', cursor);
       console.log('receivePackage:', this.maxPackageCount - this.lossPacketCount);
