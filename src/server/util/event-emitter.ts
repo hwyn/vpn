@@ -7,9 +7,6 @@ export class EventEmitter {
   constructor() { }
 
   on(key: string, handler: Handler) {
-    if (!isFunction(handler)) {
-      throw new Error('handler Must function');
-    }
     if (!hasOwnProperty(this.events, key)) {
       this.events[key] = [];
     }

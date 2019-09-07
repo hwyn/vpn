@@ -1,7 +1,7 @@
 /**
  * Created by NX on 2019/8/24.
  */
-import { EventEmitter} from './event-emitter';
+import { EventEmitter, Handler} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
 
@@ -13,7 +13,7 @@ export class PackageUtil {
   static PORT_BYTE_SIZE: 16 = 16;
   static UID_BYTE_SIZE: 8 = 8;
   static TYPE_BYTE_SIZE: 8 = 8;
-  static CURSOR_SIZE: 16 = 16;
+  static CURSOR_SIZE: 32 = 32;
   static PACKAGE_SIZE: 32 = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
@@ -89,6 +89,8 @@ export class PackageUtil {
 }
 
 export class PackageSeparation extends EventEmitter {
+  private timeout: number = 2000;
+  private clearTimeout: () => void | null;
   private mergeCursor: number = 0;
   private mergeCache: Buffer = Buffer.alloc(0);
   private splitCursor: number = 0;
@@ -98,6 +100,21 @@ export class PackageSeparation extends EventEmitter {
   private lossPacketCount: number;
   private maxPackageCount: number;
   // private buffer
+
+  private factoryTimout(uid?: string) {
+    let si = setTimeout(() => {
+      console.log(`-------------------------timeout ${uid}--------------------------`);
+      this.emitAsync('timout');
+    }, this.timeout);
+    this.clearTimeout = () => {
+      clearTimeout(si);
+      this.clearTimeout = null;
+    }
+  }
+
+  on(key: string, handler: Handler) {
+    super.on(key, handler);
+  }
 
   packing(type: number, uid: string, buffer: Buffer) {
     return PackageUtil.packing(type, uid, buffer);
@@ -131,6 +148,7 @@ export class PackageSeparation extends EventEmitter {
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     const type = isEvent ? PackageUtil.unEventPackage(data) : void(0);
     splitList.set(cursor, !isEvent ? data : this.packing(type, uid, Buffer.alloc(0)));
+
     while (splitList.has(this.splitCursor)) {
       const splitCache = this.splitCache;
       const packageBuffer = splitList.get(this.splitCursor);
@@ -152,6 +170,13 @@ export class PackageSeparation extends EventEmitter {
       this.splitList.delete(this.splitCursor);
       this.splitCursor++;
     }
+    
+    if (cursor > this.splitCursor) {
+      !this.clearTimeout && this.factoryTimout(uid);
+    } else {
+      this.clearTimeout && this.clearTimeout();
+    }
+
     this.printLoseInfo(uid, cursor as number, type);
   }
 

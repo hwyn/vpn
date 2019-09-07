@@ -5,3 +5,4 @@ export * from './package-separation';
 export * from './package-manage';
 export * from './abnormal-manage';
 export * from './client-hello';
+export * from './event-communication';

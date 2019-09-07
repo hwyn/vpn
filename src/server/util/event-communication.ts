@@ -15,9 +15,10 @@ export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
   constructor(private eventSocket: ProxySocket) {
     super(eventSocket);
-    this.mappingFnNames = ['end'];
+    this.mappingFnNames = ['end', 'write'];
     this.associatedListener(['error'], false);
     this.mappingMethod();
+    this.onInit();
   }
 
   onInit() {
@@ -39,10 +40,10 @@ export class EventCommunication extends ProxyEventEmitter {
     return { type, uid: uid.toString(), body };
   }
 
-  createLink(uid: string, port: number, data: Buffer): Buffer {
+  createLink(uid: string, port: number, data: Buffer) {
     const { host } = port === 443 ? getHttpsClientHello(data) : getHttp(data);
     const body = BufferUtil.writeGrounUInt([port, host.length], [16, 8]);
-    return BufferUtil.concat(this.createHeader(uid, LINK), body);
+    this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
   };
 
   parseLink(uid: string, link: Buffer): { uid: string, port: number | bigint, host: string} {
@@ -52,13 +53,46 @@ export class EventCommunication extends ProxyEventEmitter {
     return { uid, port, host: host.toString() };
   }
 
+  createEne(uid: string, maxLength?: number) {
+    const { CURSOR_SIZE } = PackageUtil;
+    const length = BufferUtil.writeGrounUInt([maxLength], [CURSOR_SIZE]);
+    this.write(BufferUtil.concat(this.createEvent(uid, END), length));
+  }
+
+  parseEnd(uid: string, body: Buffer) {
+    const { CURSOR_SIZE } = PackageUtil;
+    const [ maxLength ] = BufferUtil.readGroupUInt(body, [ CURSOR_SIZE ]);
+    this.emitAsync('event-end', { uid, maxLength });
+  }
+
+  createEvent(uid: string, type: number): Buffer {
+    return this.createHeader(uid, type);
+  }
+
+  createLinkSuccess = (uid: string) => () => {
+    this.write(this.createEvent(uid, LINKSUCCES));
+  }
+
+  createClose(uid: string) {
+    this.write( this.createEvent(uid, CLOSE));
+  }
+
+  createError(uid: string) {
+    this.write( this.createEvent(uid, ERROR));
+  }
+
+  linkListenerSuccess = (uid: string, callback: (info: any) => void) => (info: any) => {
+    if (info.uid === uid) callback(info);
+  }
+
   parseEvent(data: Buffer) {
     const { type, uid, body } = this.parseHeader(data);
+    console.log('data==============>', data);
     switch(type) {
       case LINK: this.parseLink(uid, body); break;
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
-      case END: this.emitAsync('event-end', { uid }); break;
+      case END: this.parseEnd(uid, body); break;
       case CLOSE: this.emitAsync('event-close', { uid }); break;
       case ERROR: this.emitAsync('event-error', { uid }); break;
     }

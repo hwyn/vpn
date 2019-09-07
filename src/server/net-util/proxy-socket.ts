@@ -29,6 +29,7 @@ export class ProxySocket extends ProxyEventEmitter {
       this.waitingWriteList = [];
     });
     this.on('close', () => this.ended = true);
+    this.on('error', () => this.ended = true);
   }
 
   private proxyEmit(event: string, data: Buffer) {

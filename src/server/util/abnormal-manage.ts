@@ -42,7 +42,7 @@ export class AbnormalManage extends EventEmitter {
   message = () => ({ uid, data, type }: any) => {
     console.log(`--message ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
     this.isNotEnd = false;
-    if ([CLOSE, END].includes(type)) {
+    if ([CLOSE, END, ERROR].includes(type)) {
       this.emitAsync('end');
     }
   }

@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, getHttp, getHttpsClientHello } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, getHttp, getHttpsClientHello, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
 import { 
@@ -15,6 +15,7 @@ import {
 const { UDP_REQUEST_MESSAGE } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
+  private eventCommunication: EventCommunication;
   constructor() {
     super('en');
     this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
@@ -33,6 +34,7 @@ class TcpConnection extends ProxyBasic {
   protected requestData = () => (buffer: Buffer) => {
     const { uid } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
+    console.log(uid, clientSocket);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
@@ -56,11 +58,12 @@ class TcpConnection extends ProxyBasic {
 
     packageSeparation.on('sendData', this.send(uid));
     packageSeparation.on('sendEvent', this.responseEvent(tcpEvent));
+    packageSeparation.on('timeout', abnormalManage.endCall());
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
     packageSeparation.on('receiveEvent', abnormalManage.message());
 
     tcpEvent.on('data', packageManage.agentRequestCall());
-    tcpEvent.on('error', () => clientSocket.end());
+    tcpEvent.on('error', () => abnormalManage.errorCall());
 
     clientSocket.on('connect', () => clientSocket.write(buffer));
     clientSocket.on('data', packageManage.serverLinkCall());
@@ -87,6 +90,52 @@ class TcpConnection extends ProxyBasic {
       packageManage.agentRequestCall()(data);
     });
   }
+
+
+  linkListener = () => async({ uid, port, host }: any) => {
+    const address = await getAddress(host);
+    const clientSocket = ProxySocket.createSocketClient(address, port);
+    const packageSeparation = new PackageSeparation();
+    const packageManage = new ServerManage(uid, packageSeparation);
+    const abnormalManage = new AbnormalManage(uid, this.eventCommunication.source, packageSeparation);
+    const eventCommunication = this.eventCommunication;
+    console.log(`--------server connection ${ uid }----------`);
+    console.log(`Host: ${host} address: ${address} -- ${port}`);
+    
+    this.socketMap.set(uid, clientSocket);
+    proxyProcess.bindUid(uid);
+
+    this.socketMap.set(uid, clientSocket);
+    proxyProcess.bindUid(uid);
+
+    packageSeparation.on('sendData', this.send(uid));
+    // packageSeparation.on('sendEvent', this.responseEvent(tcpEvent));
+    packageSeparation.on('timeout', abnormalManage.endCall());
+    packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
+    // packageSeparation.on('receiveEvent', abnormalManage.message());
+
+    // tcpEvent.on('data', packageManage.agentRequestCall());
+    // tcpEvent.on('error', () => abnormalManage.errorCall());
+    clientSocket.on('connect', eventCommunication.createLinkSuccess(uid));
+    clientSocket.on('data', packageManage.serverLinkCall());
+    clientSocket.on('agent', packageManage.agentRequestCall());
+    clientSocket.on('end', abnormalManage.endCall());
+    clientSocket.on('close', abnormalManage.closeCall());
+    clientSocket.on('error', abnormalManage.errorCall());
+
+    abnormalManage.on('end', () => {
+      proxyProcess.deleteUid(uid);
+      this.socketMap.delete(uid);
+      clientSocket.end();
+      // tcpEvent.end();
+      console.log('socketMap.size', this.socketMap.size);
+    });
+  }
+
+  callEvent = () => (eventTcp: ProxySocket) => {
+    this.eventCommunication = new EventCommunication(eventTcp);
+    this.eventCommunication.on('link', this.linkListener());
+  }
 }
 
-ProxyTcp.createTcpServer(SERVER_TCP_PORT, new TcpConnection().call());
+ProxyTcp.createTcpServer(SERVER_TCP_PORT, new TcpConnection().callEvent());
