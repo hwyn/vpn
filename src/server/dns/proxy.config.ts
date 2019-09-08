@@ -10,7 +10,7 @@ const proxy = {
   '*.gshifen.com': LOCALHOST_ADDRESS,
   '*.a.shifen.com': LOCALHOST_ADDRESS,
   '*.bilibili.com': LOCALHOST_ADDRESS,
-  // '*': LOCALHOST_ADDRESS
+  '*': LOCALHOST_ADDRESS,
   // '*': '10.248.63.76',
   // '*.expressjs.com.cn': '10.248.63.76',
 };

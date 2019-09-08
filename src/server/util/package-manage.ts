@@ -42,7 +42,7 @@ export class BrowserManage extends PackageManage{
   }
 
   clientDataCall = () => (buffer: Buffer) => {
-    // console.log(`client request ${this.uid}------>${buffer.length}`);
+    console.log(`client request ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };

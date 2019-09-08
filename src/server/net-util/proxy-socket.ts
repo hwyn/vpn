@@ -14,8 +14,8 @@ export class ProxySocket extends ProxyEventEmitter {
   static createSocketClient = (host: string, port: number, openPackage?: boolean): ProxySocket => {
     return new ProxySocket(createConnection({ host, port }), openPackage);
   };
+  public ended: boolean = false;
   private socketEmit: (event: string, data: Buffer) => void;
-  private ended: boolean = false;
   private waitingWriteList: Buffer[] = [];
   private uid: string = uuid();
   private cacheBuffer: Buffer = Buffer.alloc(0);
@@ -56,12 +56,12 @@ export class ProxySocket extends ProxyEventEmitter {
     let cacheBuffer = BufferUtil.concat(this.cacheBuffer, data);
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     while (size < cacheBuffer.length) {
-      const { packageSize, buffer } = PackageUtil.unpacking(cacheBuffer);
+      const { packageSize } = PackageUtil.unpacking(cacheBuffer);
       if (packageSize > cacheBuffer.length) {
         break;
       }
+      next(PackageUtil.unpacking(cacheBuffer.slice(0, packageSize as number)).buffer);
       cacheBuffer = cacheBuffer.slice(packageSize as number);
-      next(buffer);
     }
     this.cacheBuffer = cacheBuffer;
   }

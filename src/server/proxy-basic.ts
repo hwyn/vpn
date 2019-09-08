@@ -24,7 +24,7 @@ export abstract class ProxyBasic {
    * 初始化进程监听
    */
   protected initProxyProcess() {
-    proxyProcess.on(NOT_UID_PROCESS, (uid: string) => this.notExistUid(uid));
+    proxyProcess.on(NOT_UID_PROCESS, (uid: string) => this.notExistUid(uid, Buffer.alloc(0)));
     proxyProcess.on(STOU_UID_LINK, (uid: string) => this.stopClient(uid));
   }
 
@@ -55,9 +55,13 @@ export abstract class ProxyBasic {
    * 没有检测到存在当前uid的连接
    * @param uid 
    */
-  protected notExistUid(uid: string) {
-    console.log(`not----->${uid} link`);
-    this.eventCommunication.createStorResponse(uid);
+  protected notExistUid(uid: string, buffer: Buffer) {
+    const { data } =  PackageUtil.packageSigout(buffer);
+    console.log(`${this.serverName} not----->${uid} link`);
+    console.log(PackageUtil.isEventPackage(data));
+    if (!PackageUtil.isEventPackage(data)) {
+      this.eventCommunication.createStorResponse(uid);
+    }
   }
 
   /**
@@ -65,6 +69,7 @@ export abstract class ProxyBasic {
    */
   protected stopClient(uid: string) {
     const clientTcp = this.socketMap.get(uid);
+    console.log(`${this.serverName} stop----> ${uid} link`);
     if (clientTcp) {
       clientTcp.end();
     }

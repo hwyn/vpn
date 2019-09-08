@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication } from '../util';
+import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication, Handler } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { 
   SERVER_TCP_PORT,
@@ -42,10 +42,6 @@ class TcpConnection extends ProxyBasic {
     proxyProcess.responseMessage(data);
   }
 
-  protected notExistUid(uid: string) {
-    this.eventCommunication.createStorResponse(uid);
-  }
-
   protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
     const { uid } = PackageUtil.packageSigout(buffer[0]);
     // console.log(`--client connection pid:${process.pid}  ${ uid }--`);
@@ -53,12 +49,12 @@ class TcpConnection extends ProxyBasic {
   };
 
   protected responseData = () => (buffer: Buffer) => {
-    const { uid, cursor } = PackageUtil.packageSigout(buffer);
+    const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      this.notExistUid(uid);
+      this.notExistUid(uid, data);
     }
   };
 
@@ -70,7 +66,7 @@ class TcpConnection extends ProxyBasic {
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
-    packageSeparation.on('timeout', abnormalManage.errorCall());
+    packageSeparation.on('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
@@ -78,14 +74,17 @@ class TcpConnection extends ProxyBasic {
     
     clientSocket.on('data', packageManage.clientDataCall());
     clientSocket.on('agent', packageManage.agentResponseCall());
-    clientSocket.on('end', abnormalManage.endCall());
+    clientSocket.on('end', () => {
+      console.log(`-----end------`);
+      abnormalManage.endCall()();
+    });
     clientSocket.on('close', abnormalManage.closeCall());
     clientSocket.on('error', abnormalManage.errorCall());
     
     abnormalManage.on('end', () => {
       this.socketMap.delete(uid);
       proxyProcess.deleteUid(uid);
-      console.log('socketMap.size', this.socketMap.size);
+      console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
     });
 
     packageManage.clientDataCall()(data);
@@ -107,6 +106,7 @@ class TcpConnection extends ProxyBasic {
       });
 
       const removeListenerError = eventCommunication.on('link-error', ({ uid }: any) => {
+        console.log(`link-error---------${uid}`);
         if (defaultUid === uid) {
           clearListener();
         }
