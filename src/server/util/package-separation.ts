@@ -113,7 +113,7 @@ export class PackageSeparation extends EventEmitter {
   }
 
   on(key: string, handler: Handler) {
-    super.on(key, handler);
+    return super.on(key, handler);
   }
 
   packing(type: number, uid: string, buffer: Buffer) {

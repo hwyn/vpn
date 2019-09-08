@@ -1,8 +1,11 @@
-import { EventEmitter } from './event-emitter';
-import { PackageUtil } from './package-separation';
+import { PackageUtil, PackageSeparation } from './package-separation';
 import { BufferUtil } from './buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
 import { ProxySocket, ProxyEventEmitter } from '../net-util';
+import { uuid } from './tools';
+import { COMMUNICATION_EVENT  } from '../constant';
+
+const { DATA } = COMMUNICATION_EVENT;
 
 const LINK = 0;
 const LINKSUCCES = 1;
@@ -10,12 +13,14 @@ const END = 2;
 const CLOSE = 3;
 const ERROR = 4;
 const LINKERROR = 5;
+const ONELINK = 6;
 
 export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
+  private uid: string = uuid();
   constructor(private eventSocket: ProxySocket) {
     super(eventSocket);
-    this.mappingFnNames = ['end', 'write'];
+    this.mappingFnNames = ['end'];
     this.associatedListener(['error'], false);
     this.mappingMethod();
     this.onInit();
@@ -23,6 +28,10 @@ export class EventCommunication extends ProxyEventEmitter {
 
   onInit() {
     this.eventSocket.on('data', (data: Buffer) => this.parseEvent(data));
+  }
+
+  write(buffer: Buffer) {
+    this.source.write(buffer);
   }
 
   createHeader(uid: string, type: number): Buffer {
@@ -53,16 +62,19 @@ export class EventCommunication extends ProxyEventEmitter {
     return { uid, port, host: host.toString() };
   }
 
-  createEne(uid: string, maxLength?: number) {
-    const { CURSOR_SIZE } = PackageUtil;
-    const length = BufferUtil.writeGrounUInt([maxLength], [CURSOR_SIZE]);
-    this.write(BufferUtil.concat(this.createEvent(uid, END), length));
+  parseOneLink(uid: string, body: Buffer) {
+    const [ bodyLength ] = BufferUtil.readGroupUInt(body, [ 16 ]);
+    const [ title, eventInfo ] = BufferUtil.unConcat(body, [ 16, bodyLength ]);
+    this.emitAsync('link-info', eventInfo);
   }
 
-  parseEnd(uid: string, body: Buffer) {
-    const { CURSOR_SIZE } = PackageUtil;
-    const [ maxLength ] = BufferUtil.readGroupUInt(body, [ CURSOR_SIZE ]);
-    this.emitAsync('event-end', { uid, maxLength });
+  sendEvent = (uid: string) => (data: Buffer[]) => {
+    data.forEach((buffer: Buffer) => {
+      const header = this.createHeader(uid, ONELINK);
+      const body = BufferUtil.writeGrounUInt([buffer.length], [16]);
+      const info = BufferUtil.concat(header, body, buffer);
+      this.write(info);
+    });
   }
 
   createEvent(uid: string, type: number): Buffer {
@@ -73,28 +85,14 @@ export class EventCommunication extends ProxyEventEmitter {
     this.write(this.createEvent(uid, LINKSUCCES));
   }
 
-  createClose(uid: string) {
-    this.write( this.createEvent(uid, CLOSE));
-  }
-
-  createError(uid: string) {
-    this.write( this.createEvent(uid, ERROR));
-  }
-
-  linkListenerSuccess = (uid: string, callback: (info: any) => void) => (info: any) => {
-    if (info.uid === uid) callback(info);
-  }
-
   parseEvent(data: Buffer) {
     const { type, uid, body } = this.parseHeader(data);
-    console.log('data==============>', data);
     switch(type) {
       case LINK: this.parseLink(uid, body); break;
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
+      case ONELINK: this.parseOneLink(uid, body); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
       case END: this.parseEnd(uid, body); break;
-      case CLOSE: this.emitAsync('event-close', { uid }); break;
-      case ERROR: this.emitAsync('event-error', { uid }); break;
     }
   }
 }

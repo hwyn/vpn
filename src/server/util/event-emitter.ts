@@ -11,6 +11,7 @@ export class EventEmitter {
       this.events[key] = [];
     }
     this.events[key].push(handler);
+    return () => this.remove(key, handler);
   }
 
   /**

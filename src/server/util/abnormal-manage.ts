@@ -7,7 +7,7 @@ const { ERROR, END, CLOSE } = COMMUNICATION_EVENT;
 
 export class AbnormalManage extends EventEmitter {
   private isNotEnd: boolean = true;
-  constructor(private uid: string, private channel: ProxySocket, private packageSeparation: PackageSeparation) {
+  constructor(private uid: string, private packageSeparation: PackageSeparation) {
     super();
   }
 
@@ -34,10 +34,6 @@ export class AbnormalManage extends EventEmitter {
       this.emitAsync('end');
     }
   };
-
-  send = () => (data: Buffer[]) => {
-    data.forEach((buffer: Buffer) => this.channel.write(buffer));
-  }
 
   message = () => ({ uid, data, type }: any) => {
     console.log(`--message ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
