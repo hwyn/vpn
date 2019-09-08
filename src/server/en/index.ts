@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, getHttp, getHttpsClientHello, EventCommunication } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, getHttp, getHttpsClientHello, EventCommunication, uuid } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
 import { 
@@ -12,10 +12,9 @@ import {
   CLIENT_MAX_UDP_SERVER,
 } from '../constant';
 
-const { UDP_REQUEST_MESSAGE } = PROCESS_EVENT_TYPE;
+const { UDP_REQUEST_MESSAGE, NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
-  private eventCommunication: EventCommunication;
   constructor() {
     super('en');
     this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
@@ -37,7 +36,7 @@ class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      console.log('not ===> clientSocket');
+      this.notExistUid(uid);
     }
   };
 
@@ -75,7 +74,7 @@ class TcpConnection extends ProxyBasic {
   }
 
   callEvent = () => (eventTcp: ProxySocket) => {
-    this.eventCommunication = new EventCommunication(eventTcp);
+    this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link', this.connectionListener());
   }
 }

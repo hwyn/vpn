@@ -12,11 +12,10 @@ import {
   PROCESS_EVENT_TYPE,
 } from '../constant';
 
-const { UDP_RESPONSE_MESSAGE } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
-  private eventCommunication: EventCommunication;
-  constructor(private port: number) {
+  constructor() {
     super('cn');
     this.createUdpClient(SERVER_IP, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
     this.createUdpServer(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
@@ -26,7 +25,7 @@ class TcpConnection extends ProxyBasic {
 
   protected createEventTcp(ip: string, port: number) {
     const tcpEvent = ProxySocket.createSocketClient(ip, port, true);
-    this.eventCommunication = new EventCommunication(tcpEvent);
+    this.initEventCommunication(new EventCommunication(tcpEvent))
     this.eventCommunication.on('link-info', this.responseData());
     this.eventCommunication.on('error', () => {
       this.eventCommunication.end();
@@ -38,6 +37,10 @@ class TcpConnection extends ProxyBasic {
     const { uid, buffer } = PackageUtil.getUid(data);
     const { cursor } = PackageUtil.packageSigout(buffer);
     proxyProcess.responseMessage(data);
+  }
+
+  protected notExistUid(uid: string) {
+    this.eventCommunication.createStorResponse(uid);
   }
 
   protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
@@ -52,7 +55,7 @@ class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      console.log(`not ===> ${uid} clientSocket`);
+      this.notExistUid(uid);
     }
   };
 
@@ -86,7 +89,7 @@ class TcpConnection extends ProxyBasic {
     packageManage.clientDataCall()(data);
   };
 
-  callEvent = () => (clientSocket: ProxySocket) => {
+  callEvent = (port: number) => (clientSocket: ProxySocket) => {
     const eventCommunication = this.eventCommunication;
     const defaultUid = uuid();
     clientSocket.once('data', (data: Buffer) => {
@@ -96,11 +99,12 @@ class TcpConnection extends ProxyBasic {
           removeListenerSuccess();
         }
       });
-      eventCommunication.createLink(defaultUid, this.port, data);
+      eventCommunication.createLink(defaultUid, port, data);
     });
   };
 }
 
-// const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, new TcpConnection(CLIENT_TCP_HTTP_PORT).callEvent());
+const tcpConnection = new TcpConnection();
 
-const https = ProxyTcp.createTcpServer(443, new TcpConnection(443).callEvent());
+const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, tcpConnection.callEvent(CLIENT_TCP_HTTP_PORT));
+const https = ProxyTcp.createTcpServer(443, tcpConnection.callEvent(443));

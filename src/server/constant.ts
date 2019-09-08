@@ -34,6 +34,8 @@ export const PROCESS_EVENT_TYPE = {
   UDP_REQUEST_MESSAGE: 'udp-request-message',
   DELETE_UID: 'delete-uid',
   BIND_UID: 'bind-uid',
+  NOT_UID_PROCESS: 'not-uid-process',
+  STOU_UID_LINK: 'stor-uid-link',
 };
 
 // socket通讯事件

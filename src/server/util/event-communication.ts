@@ -14,24 +14,21 @@ const CLOSE = 3;
 const ERROR = 4;
 const LINKERROR = 5;
 const ONELINK = 6;
+const STOP = 7;
 
 export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
   private uid: string = uuid();
   constructor(private eventSocket: ProxySocket) {
     super(eventSocket);
-    this.mappingFnNames = ['end'];
-    this.associatedListener(['error'], false);
+    this.mappingFnNames = ['end', 'write'];
+    this.associatedListener(['error', 'close'], false);
     this.mappingMethod();
     this.onInit();
   }
 
   onInit() {
     this.eventSocket.on('data', (data: Buffer) => this.parseEvent(data));
-  }
-
-  write(buffer: Buffer) {
-    this.source.write(buffer);
   }
 
   createHeader(uid: string, type: number): Buffer {
@@ -80,6 +77,10 @@ export class EventCommunication extends ProxyEventEmitter {
   createEvent(uid: string, type: number): Buffer {
     return this.createHeader(uid, type);
   }
+  
+  createStorResponse(uid: string) {
+    return this.createEvent(uid, STOP);
+  }
 
   createLinkSuccess = (uid: string) => () => {
     this.write(this.createEvent(uid, LINKSUCCES));
@@ -93,6 +94,7 @@ export class EventCommunication extends ProxyEventEmitter {
       case ONELINK: this.parseOneLink(uid, body); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
       case END: this.parseEnd(uid, body); break;
+      case STOP: this.emitAsync('link-stop', uid);
     }
   }
 }
