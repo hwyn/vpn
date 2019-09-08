@@ -63,7 +63,7 @@ class ProxyProcess extends ProxyEventEmitter {
   }
 
   private storUidLink(uid: string) {
-    this.emitAsync(STOU_UID_LINK, uuid);
+    this.emitAsync(STOU_UID_LINK, uid);
   }
 
   private send(message: any) {

@@ -10,9 +10,9 @@ export const CLIENT_UDP_INITIAL_PORT: number = 6800;
 // 服务端udp初始监听端口
 export const SERVER_UDP_INITIAL_PORT: number = 6900;
 // 客户端代理 最大udp
-export const CLIENT_MAX_UDP_SERVER: number = 8;
+export const CLIENT_MAX_UDP_SERVER: number = 4;
 // 服务端代理 最大udp
-export const SERVER_MAX_UDP_SERVER: number = 8;
+export const SERVER_MAX_UDP_SERVER: number = 5;
 // 客户端tcp http监听端口
 export const CLIENT_TCP_HTTP_PORT: number = 80;
 // 客户端tcp https监听端口
@@ -20,7 +20,7 @@ export const CLIENT_TCP_HTTPS_PORT: number = 443;
 // 服务端tcp 监听端口
 export const SERVER_TCP_PORT: number = 8000;
 // 数据包最大size
-export const PACKAGE_MAX_SIZE: number = 9000;
+export const PACKAGE_MAX_SIZE: number = 5000;
 // 客户端 dns 地址
 export const CN_DNS_ADDRESS = '223.5.5.5';
 // 服务端 dns 地址

@@ -41,40 +41,47 @@ class TcpConnection extends ProxyBasic {
   };
 
   connectionListener = () => async({ uid, port, host }: any) => {
-    const address = await getAddress(host);
-    const clientSocket = ProxySocket.createSocketClient(address, port);
-    const packageSeparation = new PackageSeparation();
-    const packageManage = new ServerManage(uid, packageSeparation);
-    const abnormalManage = new AbnormalManage(uid, packageSeparation);
-    const eventCommunication = this.eventCommunication;
-    console.log(`--------server connection ${ uid }----------`);
-    console.log(`Host: ${host} address: ${address} -- ${port}`);
-    
-    this.socketMap.set(uid, clientSocket);
-    proxyProcess.bindUid(uid);
+    try {
+      const address = await getAddress(host);
 
-    packageSeparation.on('sendData', this.send(uid));
-    packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
-    packageSeparation.on('timeout', abnormalManage.endCall());
-    packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
-    
-    clientSocket.on('connect', eventCommunication.createLinkSuccess(uid));
-    clientSocket.on('data', packageManage.serverLinkCall());
-    clientSocket.on('agent', packageManage.agentRequestCall());
-    clientSocket.on('end', abnormalManage.endCall());
-    clientSocket.on('close', abnormalManage.closeCall());
-    clientSocket.on('error', abnormalManage.errorCall());
+      const clientSocket = ProxySocket.createSocketClient(address, port);
+      const packageSeparation = new PackageSeparation();
+      const packageManage = new ServerManage(uid, packageSeparation);
+      const abnormalManage = new AbnormalManage(uid, packageSeparation);
+      const eventCommunication = this.eventCommunication;
+      console.log(`--------server connection ${ uid }----------`);
+      console.log(`Host: ${host} address: ${address} -- ${port}`);
+      
+      this.socketMap.set(uid, clientSocket);
+      proxyProcess.bindUid(uid);
 
-    abnormalManage.on('end', () => {
-      proxyProcess.deleteUid(uid);
-      this.socketMap.delete(uid);
-      clientSocket.end();
-      console.log('socketMap.size', this.socketMap.size);
-    });
+      packageSeparation.on('sendData', this.send(uid));
+      packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
+      packageSeparation.on('timeout', abnormalManage.endCall());
+      packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
+      packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
+      
+      clientSocket.on('connect', eventCommunication.createLinkSuccess(uid));
+      clientSocket.on('data', packageManage.serverLinkCall());
+      clientSocket.on('agent', packageManage.agentRequestCall());
+      clientSocket.on('end', abnormalManage.endCall());
+      clientSocket.on('close', abnormalManage.closeCall());
+      clientSocket.on('error', abnormalManage.errorCall());
+
+      abnormalManage.on('end', () => {
+        proxyProcess.deleteUid(uid);
+        this.socketMap.delete(uid);
+        clientSocket.end();
+        console.log('socketMap.size', this.socketMap.size);
+      });
+    } catch(e) {
+      this.eventCommunication.createLinkEror(uid);
+    }
   }
 
   callEvent = () => (eventTcp: ProxySocket) => {
     this.initEventCommunication(new EventCommunication(eventTcp));
+    this.eventCommunication.on('link-info', this.requestData());
     this.eventCommunication.on('link', this.connectionListener());
   }
 }

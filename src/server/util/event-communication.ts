@@ -79,7 +79,12 @@ export class EventCommunication extends ProxyEventEmitter {
   }
   
   createStorResponse(uid: string) {
-    return this.createEvent(uid, STOP);
+    this.write(this.createEvent(uid, STOP));
+  }
+
+  
+  createLinkEror =  (uid: string) => () => {
+    this.write(this.createEvent(uid, LINKERROR));
   }
 
   createLinkSuccess = (uid: string) => () => {

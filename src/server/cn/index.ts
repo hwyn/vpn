@@ -27,9 +27,12 @@ class TcpConnection extends ProxyBasic {
     const tcpEvent = ProxySocket.createSocketClient(ip, port, true);
     this.initEventCommunication(new EventCommunication(tcpEvent))
     this.eventCommunication.on('link-info', this.responseData());
-    this.eventCommunication.on('error', () => {
-      this.eventCommunication.end();
-      this.createEventTcp(SERVER_IP, SERVER_TCP_PORT);
+    this.eventCommunication.on('error', (error: Error) => {
+      console.log(error);
+      setTimeout(() => {
+        this.eventCommunication.end();
+        this.createEventTcp(SERVER_IP, SERVER_TCP_PORT);
+      }, 5000);
     });
   }
 
@@ -45,7 +48,7 @@ class TcpConnection extends ProxyBasic {
 
   protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
     const { uid } = PackageUtil.packageSigout(buffer[0]);
-    console.log(`--client connection pid:${process.pid}  ${ uid }--`);
+    // console.log(`--client connection pid:${process.pid}  ${ uid }--`);
     tcpEvent.write(buffer[0]);
   };
 
@@ -71,7 +74,7 @@ class TcpConnection extends ProxyBasic {
     packageSeparation.on('sendData', this.send(uid));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
-    packageSeparation.on('receiveEvent', abnormalManage.message());
+    packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
     
     clientSocket.on('data', packageManage.clientDataCall());
     clientSocket.on('agent', packageManage.agentResponseCall());
@@ -82,7 +85,6 @@ class TcpConnection extends ProxyBasic {
     abnormalManage.on('end', () => {
       this.socketMap.delete(uid);
       proxyProcess.deleteUid(uid);
-      clientSocket.end();
       console.log('socketMap.size', this.socketMap.size);
     });
 
@@ -93,10 +95,20 @@ class TcpConnection extends ProxyBasic {
     const eventCommunication = this.eventCommunication;
     const defaultUid = uuid();
     clientSocket.once('data', (data: Buffer) => {
+      const clearListener = () => {
+        removeListenerSuccess();
+        removeListenerError();
+      };
       const removeListenerSuccess = eventCommunication.on('link-success', ({ uid }: any) => {
         if (defaultUid === uid) {
           this.connectionListener(uid, clientSocket)(data);
-          removeListenerSuccess();
+          clearListener();
+        }
+      });
+
+      const removeListenerError = eventCommunication.on('link-error', ({ uid }: any) => {
+        if (defaultUid === uid) {
+          clearListener();
         }
       });
       eventCommunication.createLink(defaultUid, port, data);

@@ -89,7 +89,7 @@ export class PackageUtil {
 }
 
 export class PackageSeparation extends EventEmitter {
-  private timeout: number = 2000;
+  private timeout: number = 1000;
   private clearTimeout: () => void | null;
   private mergeCursor: number = 0;
   private mergeCache: Buffer = Buffer.alloc(0);
@@ -104,7 +104,7 @@ export class PackageSeparation extends EventEmitter {
   private factoryTimout(uid?: string) {
     let si = setTimeout(() => {
       console.log(`-------------------------timeout ${uid}--------------------------`);
-      this.emitAsync('timout');
+      this.emitAsync('timeout');
     }, this.timeout);
     this.clearTimeout = () => {
       clearTimeout(si);

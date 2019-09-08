@@ -22,7 +22,6 @@ export class AbnormalManage extends EventEmitter {
     console.log(`-- close listening ${this.uid} --`);
     if (this.isNotEnd) {
       this.packageSeparation.sendEventPackage(this.uid, CLOSE);
-      this.emitAsync('end');
     }
   };
 
@@ -31,14 +30,16 @@ export class AbnormalManage extends EventEmitter {
     console.log(error);
     if (this.isNotEnd) {
       this.packageSeparation.sendEventPackage(this.uid, ERROR);
-      this.emitAsync('end');
     }
   };
 
-  message = () => ({ uid, data, type }: any) => {
+  message = (proxySocket: ProxySocket) => ({ uid, data, type }: any) => {
     console.log(`--message ${['link', 'data', 'close', 'error', 'end'][type]} ${uid}--`);
-    this.isNotEnd = false;
-    if ([CLOSE, END, ERROR].includes(type)) {
+    if (this.isNotEnd) {
+      this.isNotEnd = false;
+      proxySocket.end();
+    }
+    if ([CLOSE, ERROR].includes(type)) {
       this.emitAsync('end');
     }
   }
