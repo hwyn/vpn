@@ -10,13 +10,14 @@ import {
   PROCESS_EVENT_TYPE,
   CLIENT_IP,
   CLIENT_MAX_UDP_SERVER,
+  LOCALHOST_ADDRESS
 } from '../constant';
 
 const { UDP_REQUEST_MESSAGE, NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
   constructor() {
-    super('en');
+    super('server');
     this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
     this.createUdpServer(SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
     proxyProcess.on(UDP_REQUEST_MESSAGE, this.requestData());
@@ -33,11 +34,10 @@ class TcpConnection extends ProxyBasic {
   protected requestData = () => (buffer: Buffer) => {
     const { uid, data, cursor } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
-    console.log(`${uid} ------> ${cursor}`);
+    console.log(`${(this as any).serverName} ${uid} cursor:${cursor}`);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      console.log(cursor);
       this.notExistUid(uid, data);
     }
   };
@@ -45,7 +45,9 @@ class TcpConnection extends ProxyBasic {
   connectionListener = () => async({ uid, port, host }: any) => {
     try {
       const address = await getAddress(host);
-
+      if (address === LOCALHOST_ADDRESS) {
+        throw new Error(`address is ${LOCALHOST_ADDRESS}`);
+      }
       const clientSocket = ProxySocket.createSocketClient(address, port);
       const packageSeparation = new PackageSeparation();
       const packageManage = new ServerManage(uid, packageSeparation);
@@ -66,14 +68,11 @@ class TcpConnection extends ProxyBasic {
       clientSocket.on('connect', eventCommunication.createLinkSuccess(uid));
       clientSocket.on('data', packageManage.serverLinkCall());
       clientSocket.on('agent', packageManage.agentRequestCall());
-      clientSocket.on('end', () => {
-        console.log(`server-----end------`);
-        abnormalManage.endCall()();
-      });
+      clientSocket.on('end', abnormalManage.endCall());
       clientSocket.on('close', abnormalManage.closeCall());
       clientSocket.on('error', abnormalManage.errorCall());
 
-      abnormalManage.on('end', () => {
+      abnormalManage.once('end', () => {
         proxyProcess.deleteUid(uid);
         this.socketMap.delete(uid);
         console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);

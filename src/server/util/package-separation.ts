@@ -96,7 +96,6 @@ export class PackageSeparation extends EventEmitter {
   private splitCursor: number = 0;
   private splitCache: Buffer = Buffer.alloc(0);
   private splitList: Map<number | bigint, Buffer> = new Map();
-  private splitPageSize: number;
   private lossPacketCount: number;
   private maxPackageCount: number;
   // private buffer
@@ -125,6 +124,9 @@ export class PackageSeparation extends EventEmitter {
   }
 
   mergePackage(type: number, uid: string, buffer: Buffer) {
+    if (buffer.length === 0) {
+      return buffer;
+    }
     const mergeCache = this.mergeCache;
     const packageBuffer = this.packing(type, uid, buffer);
     this.mergeCache = Buffer.concat([mergeCache, packageBuffer], mergeCache.length + packageBuffer.length);
@@ -139,34 +141,40 @@ export class PackageSeparation extends EventEmitter {
     return packageBuffer;
   }
 
+  stickPackage() {
+    const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
+    let cacheBuffer: Buffer = this.splitCache;
+    while (size < cacheBuffer.length) {
+      try {
+        const { packageSize } = PackageUtil.unpacking(cacheBuffer);
+        if (packageSize > cacheBuffer.length) {
+          break;
+        }
+        const packageBuffer = cacheBuffer.slice(0, packageSize as any);
+        cacheBuffer = cacheBuffer.slice(packageSize as any);
+        const { uid, type, buffer } = PackageUtil.unpacking(packageBuffer);
+        this.separation({ uid, type, data: buffer });
+      } catch(e) {
+        this.emitAsync('timeout');
+        this.splitCursor++;
+        throw e;
+      }
+    }
+    this.splitCache = cacheBuffer;
+  }
+
   splitPackage(buffer: Buffer) {
     const { cursor, data, uid } =  PackageUtil.packageSigout(buffer);
     const isEvent = PackageUtil.isEventPackage(data);
     const splitList = this.splitList;
-    if (splitList.get(cursor)) return;
+    if (splitList.get(cursor) || this.splitCursor > cursor) return;
 
-    const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     const type = isEvent ? PackageUtil.unEventPackage(data) : void(0);
     splitList.set(cursor, !isEvent ? data : this.packing(type, uid, Buffer.alloc(0)));
 
     while (splitList.has(this.splitCursor)) {
-      const splitCache = this.splitCache;
-      const packageBuffer = splitList.get(this.splitCursor);
-      this.splitCache = Buffer.concat([splitCache, packageBuffer], splitCache.length + packageBuffer.length);
-
-      if (!this.splitPageSize && this.splitCache.length >= size) {
-        this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
-      }
-      while (this.splitPageSize && this.splitPageSize <= this.splitCache.length) {
-        const packageData = this.splitCache.slice(0, this.splitPageSize);
-        const { uid, type: eventType, buffer } = this.unpacking(packageData);
-        this.splitCache = this.splitCache.slice(this.splitPageSize);
-        this.splitPageSize = void(0);
-        if (this.splitCache.length >= size) {
-          this.splitPageSize = this.unpacking(this.splitCache).packageSize as number;
-        }
-        this.separation({ uid, type: eventType, data: buffer });
-      }
+      this.splitCache = BufferUtil.concat(this.splitCache, splitList.get(this.splitCursor));
+      this.stickPackage();
       this.splitList.delete(this.splitCursor);
       this.splitCursor++;
     }

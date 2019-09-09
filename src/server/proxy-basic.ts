@@ -57,8 +57,7 @@ export abstract class ProxyBasic {
    */
   protected notExistUid(uid: string, buffer: Buffer) {
     const { data } =  PackageUtil.packageSigout(buffer);
-    console.log(`${this.serverName} not----->${uid} link`);
-    console.log(PackageUtil.isEventPackage(data));
+    console.log(`${uid}`, data);
     if (!PackageUtil.isEventPackage(data)) {
       this.eventCommunication.createStorResponse(uid);
     }

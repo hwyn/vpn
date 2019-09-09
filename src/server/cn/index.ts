@@ -16,7 +16,7 @@ const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_T
 
 class TcpConnection extends ProxyBasic {
   constructor() {
-    super('cn');
+    super('client');
     this.createUdpClient(SERVER_IP, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
     this.createUdpServer(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
     this.createEventTcp(SERVER_IP, SERVER_TCP_PORT);
@@ -51,6 +51,7 @@ class TcpConnection extends ProxyBasic {
   protected responseData = () => (buffer: Buffer) => {
     const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
+    console.log(`${(this as any).serverName} ${uid} cursor:${cursor}`);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
@@ -74,10 +75,7 @@ class TcpConnection extends ProxyBasic {
     
     clientSocket.on('data', packageManage.clientDataCall());
     clientSocket.on('agent', packageManage.agentResponseCall());
-    clientSocket.on('end', () => {
-      console.log(`-----end------`);
-      abnormalManage.endCall()();
-    });
+    clientSocket.on('end', abnormalManage.endCall());
     clientSocket.on('close', abnormalManage.closeCall());
     clientSocket.on('error', abnormalManage.errorCall());
     
@@ -106,7 +104,6 @@ class TcpConnection extends ProxyBasic {
       });
 
       const removeListenerError = eventCommunication.on('link-error', ({ uid }: any) => {
-        console.log(`link-error---------${uid}`);
         if (defaultUid === uid) {
           clearListener();
         }

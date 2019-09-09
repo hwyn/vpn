@@ -9,7 +9,7 @@ import { BufferUtil } from '../util/buffer-util';
 const { DATA } = COMMUNICATION_EVENT;
 
 export class ProxySocket extends ProxyEventEmitter {
-  static pipeFns: string[] = ['destroy', 'address'];
+  static pipeFns: string[] = ['destroy', 'address', 'close'];
   static interceptEvents: string[] = ['data', 'end', 'error', 'close', 'connect'];
   static createSocketClient = (host: string, port: number, openPackage?: boolean): ProxySocket => {
     return new ProxySocket(createConnection({ host, port }), openPackage);

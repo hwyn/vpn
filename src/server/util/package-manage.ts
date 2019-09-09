@@ -42,7 +42,7 @@ export class BrowserManage extends PackageManage{
   }
 
   clientDataCall = () => (buffer: Buffer) => {
-    console.log(`client request ${this.uid}------>${buffer.length}`);
+    console.log(`client request ${this.uid}------>${(this.packageSeparation as any).mergeCursor}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
@@ -54,7 +54,7 @@ export class ServerManage extends PackageManage{
   }
 
   serverLinkCall = () => (buffer: any) => {
-    // console.log(`server response ${this.uid}------>${buffer.length}`);
+    console.log(`server response ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
