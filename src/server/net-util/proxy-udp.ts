@@ -31,6 +31,9 @@ export class ProxyUdpServer extends ProxyEventEmitter {
 
   listen(port: number) {
     this.udpServer.bind(port);
-    this.udpServer.on('listening', () => this.emitAsync('listening'));
+    this.udpServer.on('listening', () => {
+      console.log(`UDP listening:: ${port}`);
+      this.emitAsync('listening');
+    });
   }
 }
