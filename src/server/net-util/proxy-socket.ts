@@ -18,6 +18,7 @@ export class ProxySocket extends ProxyEventEmitter {
   private socketEmit: (event: string, data: Buffer) => void;
   private waitingWriteList: Buffer[] = [];
   private uid: string = uuid();
+  private connecting: boolean = true;
   private cacheBuffer: Buffer = Buffer.alloc(0);
   [x: string]: any;
 
@@ -34,14 +35,20 @@ export class ProxySocket extends ProxyEventEmitter {
 
   private onInit() {
     this.on('connect', () => {
+      this.connecting = false;
       this.waitingWriteList.forEach((buffer: Buffer) => this.write(buffer));
       this.waitingWriteList = [];
+    });
+    this.on('error', (error: Error) => {
+      this.ended = true;
+      if (this.connecting) {
+        this.emitAsync('connect-error', error);
+      }
     });
     if (this.openPackage) {
       this.on('data', (data: Buffer, next: Handler) => this.dilutePackage(data, next));
     }
     this.on('close', () => this.ended = true);
-    this.on('error', () => this.ended = true);
   }
 
   private proxyEmit(event: string, data: Buffer) {

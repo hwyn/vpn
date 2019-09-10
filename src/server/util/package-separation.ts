@@ -102,7 +102,7 @@ export class PackageSeparation extends EventEmitter {
 
   private factoryTimout(uid?: string) {
     let si = setTimeout(() => {
-      console.log(`-------------------------timeout ${uid}--------------------------`);
+      console.log(`------timeout ${uid}------`);
       this.emitAsync('timeout');
     }, this.timeout);
     this.clearTimeout = () => {

@@ -12,7 +12,7 @@ import {
   PROCESS_EVENT_TYPE,
 } from '../constant';
 
-const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 class TcpConnection extends ProxyBasic {
   constructor() {
@@ -24,12 +24,9 @@ class TcpConnection extends ProxyBasic {
   }
 
   protected createEventTcp(ip: string, port: number) {
-    const tcpEvent = ProxySocket.createSocketClient(ip, port, true);
-    this.initEventCommunication(new EventCommunication(tcpEvent))
+    this.initEventCommunication(new EventCommunication(ProxySocket.createSocketClient(ip, port, true)))
     this.eventCommunication.on('link-info', this.responseData());
-    this.eventCommunication.on('error', (error: Error) => console.log(error));
     this.eventCommunication.on('close', () => {
-      this.eventCommunication = null;
       setTimeout(() => this.createEventTcp(SERVER_IP, SERVER_TCP_PORT),5000);
     });
   }
@@ -60,6 +57,7 @@ class TcpConnection extends ProxyBasic {
     const packageManage = new BrowserManage(uid, packageSeparation);
     const abnormalManage = new AbnormalManage(uid, packageSeparation);
     const eventCommunication = this.eventCommunication;
+
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
@@ -81,12 +79,13 @@ class TcpConnection extends ProxyBasic {
   };
 
   callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {
-    const defaultUid = uuid();
-    this.eventCommunication.createLink(defaultUid, port, data, (error: Error) => {
+    const uid = uuid();
+    console.log(`--------client connection ${ uid }----------`);
+    this.eventCommunication.createLink(uid, port, data, (error: Error) => {
       if (error) {
         return clientSocket.end();
       }
-      this.connectionListener(defaultUid, clientSocket)(data);
+      this.connectionListener(uid, clientSocket)(data);
     });
   };
 

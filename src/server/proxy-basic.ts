@@ -7,7 +7,7 @@ import { ProxySocket, proxyProcess } from './net-util';
 import { PackageUtil, Handler, EventCommunication } from './util';
 import { PROCESS_EVENT_TYPE } from './constant';
 
-const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
+const { NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 export abstract class ProxyBasic {
   protected eventCommunication: EventCommunication;
@@ -35,6 +35,11 @@ export abstract class ProxyBasic {
   protected initEventCommunication(eventCommunication: EventCommunication) {
     this.eventCommunication = eventCommunication;
     this.eventCommunication.on('link-stop', (uid: string) => proxyProcess.stopUidLinkMessage(uid));
+    this.eventCommunication.on('error', (error: Error) => console.log(error));
+    this.eventCommunication.on('close', () => {
+      this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.end());
+      this.eventCommunication = null;
+    });
   }
 
   /**
@@ -109,6 +114,10 @@ export abstract class ProxyBasic {
     });
   };
 
+  /**
+   * 关闭某个连接
+   * @param uid string
+   */
   protected clientClose(uid: string) {
     return () => {
       this.socketMap.delete(uid);

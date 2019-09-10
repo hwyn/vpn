@@ -3,13 +3,15 @@ import { hasOwnProperty } from '../util';
 import { LOCALHOST_ADDRESS } from '../constant';
 
 const proxy = {
+  'nodejs.cn': LOCALHOST_ADDRESS,
+  '*.nodejs.cn': LOCALHOST_ADDRESS,
   'baidu.com':  LOCALHOST_ADDRESS,
   '*.baidu.com': LOCALHOST_ADDRESS,
-  '*.wshifen.com': LOCALHOST_ADDRESS,
-  '*.bdstatic.com': LOCALHOST_ADDRESS,
-  '*.gshifen.com': LOCALHOST_ADDRESS,
-  '*.a.shifen.com': LOCALHOST_ADDRESS,
-  '*.bilibili.com': LOCALHOST_ADDRESS,
+  // '*.wshifen.com': LOCALHOST_ADDRESS,
+  // '*.bdstatic.com': LOCALHOST_ADDRESS,
+  // '*.gshifen.com': LOCALHOST_ADDRESS,
+  // '*.a.shifen.com': LOCALHOST_ADDRESS,
+  // '*.bilibili.com': LOCALHOST_ADDRESS,
   '*': LOCALHOST_ADDRESS,
   // '*': '10.248.63.76',
   // '*.expressjs.com.cn': '10.248.63.76',

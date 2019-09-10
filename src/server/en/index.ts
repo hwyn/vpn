@@ -65,14 +65,14 @@ class TcpConnection extends ProxyBasic {
       packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
       
       clientSocket.on('connect', eventCommunication.createLinkSuccess(uid));
+      clientSocket.on('connect-error', this.eventCommunication.createLinkEror(uid));
       clientSocket.on('data', packageManage.serverLinkCall());
       clientSocket.on('agent', packageManage.agentRequestCall());
       clientSocket.on('end', abnormalManage.endCall());
       clientSocket.on('close', abnormalManage.closeCall());
       clientSocket.on('error', abnormalManage.errorCall());
 
-      abnormalManage.on('close',this.clientClose(uid));
-
+      abnormalManage.on('close', this.clientClose(uid));
     } catch(e) {
       this.eventCommunication.createLinkEror(uid);
     }
@@ -82,7 +82,6 @@ class TcpConnection extends ProxyBasic {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link-info', this.requestData());
     this.eventCommunication.on('link', this.connectionListener());
-    this.eventCommunication.on('close', () => this.eventCommunication = null);
   }
 }
 
