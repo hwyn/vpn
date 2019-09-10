@@ -10,7 +10,7 @@
     "debug": "babel src --out-dir debug --watch --extensions \".ts,.tsx\"",
     "build:cn": "ts-tools build runClient=false webpackDir=webpack-cn --release",
     "build:en": "ts-tools build runClient=false webpackDir=webpack-en --release",
-    "build": "ts-tools build runClient=false --release",
+    "build": "ts-tools build runClient=false",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

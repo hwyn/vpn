@@ -1,4 +1,4 @@
-import { PackageUtil, PackageSeparation } from './package-separation';
+import { PackageUtil } from './package-separation';
 import { BufferUtil } from './buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
 import { ProxySocket, ProxyEventEmitter } from '../net-util';
