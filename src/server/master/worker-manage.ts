@@ -47,8 +47,10 @@ export class WorkerManage extends EventEmitter {
     const { cursor } = PackageUtil.packageSigout(buffer);
     const runWorker = manageList.getWorker(uid);
     if (!runWorker) {
-      console.log(`error----${cursor}----->${uid}`, runWorker);
-      this.send({ event: NOT_UID_PROCESS, data: uid });
+      this.send({ event: NOT_UID_PROCESS, data:{
+         uid,
+         buffer: buffer
+      }});
     }
     return { runWorker, buffer };
   }

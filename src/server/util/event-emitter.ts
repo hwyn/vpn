@@ -58,7 +58,7 @@ export class EventEmitter {
   emitAsync(...arg: any[]): Promise<any> {
     const key = arg[0];
     if (!hasOwnProperty(this.events, key)) {
-      return Promise.resolve(null);
+      return ;
     }
     arg[1] = arg[1] || void(0);
     this.events[key].forEach((handler: Handler) => handler(...arg.slice(1)));

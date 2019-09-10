@@ -34,11 +34,10 @@ class TcpConnection extends ProxyBasic {
   protected requestData = () => (buffer: Buffer) => {
     const { uid, data, cursor } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
-    console.log(`${(this as any).serverName} ${uid} cursor:${cursor}`);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      this.notExistUid(uid, data);
+      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, data);
     }
   };
 
@@ -59,9 +58,9 @@ class TcpConnection extends ProxyBasic {
       this.socketMap.set(uid, clientSocket);
       proxyProcess.bindUid(uid);
 
-      packageSeparation.on('sendData', this.send(uid));
-      packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
       packageSeparation.on('timeout', () => clientSocket.end());
+      packageSeparation.on('sendData', this.send(uid, clientSocket));
+      packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
       packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
       packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
       
@@ -72,11 +71,8 @@ class TcpConnection extends ProxyBasic {
       clientSocket.on('close', abnormalManage.closeCall());
       clientSocket.on('error', abnormalManage.errorCall());
 
-      abnormalManage.once('end', () => {
-        proxyProcess.deleteUid(uid);
-        this.socketMap.delete(uid);
-        console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
-      });
+      abnormalManage.on('close',this.clientClose(uid));
+
     } catch(e) {
       this.eventCommunication.createLinkEror(uid);
     }
@@ -86,6 +82,7 @@ class TcpConnection extends ProxyBasic {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link-info', this.requestData());
     this.eventCommunication.on('link', this.connectionListener());
+    this.eventCommunication.on('close', () => this.eventCommunication = null);
   }
 }
 

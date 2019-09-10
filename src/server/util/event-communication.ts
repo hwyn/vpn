@@ -3,15 +3,9 @@ import { BufferUtil } from './buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
 import { ProxySocket, ProxyEventEmitter } from '../net-util';
 import { uuid } from './tools';
-import { COMMUNICATION_EVENT  } from '../constant';
-
-const { DATA } = COMMUNICATION_EVENT;
 
 const LINK = 0;
 const LINKSUCCES = 1;
-const END = 2;
-const CLOSE = 3;
-const ERROR = 4;
 const LINKERROR = 5;
 const ONELINK = 6;
 const STOP = 7;
@@ -22,7 +16,7 @@ export class EventCommunication extends ProxyEventEmitter {
   constructor(private eventSocket: ProxySocket) {
     super(eventSocket);
     this.mappingFnNames = ['end', 'write'];
-    this.associatedListener(['error', 'close'], false);
+    this.associatedListener(['error', 'close'], true);
     this.mappingMethod();
     this.onInit();
   }
@@ -46,10 +40,12 @@ export class EventCommunication extends ProxyEventEmitter {
     return { type, uid: uid.toString(), body };
   }
 
-  createLink(uid: string, port: number, data: Buffer) {
+  createLink(uid: string, port: number, data: Buffer, callback?: (error?: Error) => void) {
     const { host } = port === 443 ? getHttpsClientHello(data) : getHttp(data);
     const body = BufferUtil.writeGrounUInt([port, host.length], [16, 8]);
+    this.clientLindEventDefault(uid, callback);
     this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
+
   };
 
   parseLink(uid: string, link: Buffer): { uid: string, port: number | bigint, host: string} {
@@ -78,7 +74,7 @@ export class EventCommunication extends ProxyEventEmitter {
     return this.createHeader(uid, type);
   }
   
-  createStorResponse(uid: string) {
+  createStopResponse(uid: string) {
     this.write(this.createEvent(uid, STOP));
   }
 
@@ -98,8 +94,25 @@ export class EventCommunication extends ProxyEventEmitter {
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
       case ONELINK: this.parseOneLink(uid, body); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
-      case END: this.parseEnd(uid, body); break;
       case STOP: this.emitAsync('link-stop', uid);
     }
+  }
+
+  clientLindEventDefault(defaultUid: string, callback?: (error?: Error) => void) {
+    const success = this.on('link-success', ({ uid }: any) => {
+      if (uid === defaultUid) {
+        callback();
+        success();
+        error();
+      }
+    });
+
+    const error = this.on('link-error', ({ uid }: any) => {
+      if (uid === defaultUid) {
+        callback(new Error(`${uid} connection create a failure`));
+        success();
+        error();
+      }
+    });
   }
 }

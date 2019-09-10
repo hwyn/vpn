@@ -58,8 +58,8 @@ class ProxyProcess extends ProxyEventEmitter {
     this.emitAsync(UDP_REQUEST_MESSAGE, Buffer.from(data));
   }
   
-  private notUidProcess(uid: string) {
-    this.emitAsync(NOT_UID_PROCESS, uid);
+  private notUidProcess({ uid, buffer }: any) {
+    this.emitAsync(NOT_UID_PROCESS, uid, Buffer.from(buffer.data));
   }
 
   private storUidLink(uid: string) {

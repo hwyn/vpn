@@ -24,7 +24,7 @@ export abstract class ProxyBasic {
    * 初始化进程监听
    */
   protected initProxyProcess() {
-    proxyProcess.on(NOT_UID_PROCESS, (uid: string) => this.notExistUid(uid, Buffer.alloc(0)));
+    proxyProcess.on(NOT_UID_PROCESS, (uid: string, buffer: Buffer) => this.notExistUid(uid, buffer));
     proxyProcess.on(STOU_UID_LINK, (uid: string) => this.stopClient(uid));
   }
 
@@ -56,10 +56,9 @@ export abstract class ProxyBasic {
    * @param uid 
    */
   protected notExistUid(uid: string, buffer: Buffer) {
-    const { data } =  PackageUtil.packageSigout(buffer);
-    console.log(`${uid}`, data);
-    if (!PackageUtil.isEventPackage(data)) {
-      this.eventCommunication.createStorResponse(uid);
+    const data = PackageUtil.packageSigout(buffer).data;
+    if (!PackageUtil.isEventPackage(data) && this.eventCommunication) {
+      this.eventCommunication.createStopResponse(uid);
     }
   }
 
@@ -68,7 +67,6 @@ export abstract class ProxyBasic {
    */
   protected stopClient(uid: string) {
     const clientTcp = this.socketMap.get(uid);
-    console.log(`${this.serverName} stop----> ${uid} link`);
     if (clientTcp) {
       clientTcp.end();
     }
@@ -98,11 +96,26 @@ export abstract class ProxyBasic {
     this.udpClientList[clientCursor].write(buffer, uid);
   }
 
-  protected send = (uid: string) => (data: Buffer | Buffer[]) => {
+  /**
+   * udp 发送数据
+   */
+  protected send = (uid: string, clientSocket: ProxySocket) => (data: Buffer | Buffer[]) => {
+    if (!this.eventCommunication) {
+      clientSocket.end();
+      return ;
+    }
     data.forEach((buffer: any) => {
       this.write(buffer, this.getCursor(), uid);
     });
   };
+
+  protected clientClose(uid: string) {
+    return () => {
+      this.socketMap.delete(uid);
+      proxyProcess.deleteUid(uid);
+      console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
+    }
+  }
 
   protected abstract udpMessage(data: Buffer, next?: Handler): void;
 

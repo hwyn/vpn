@@ -10,7 +10,7 @@ const proxy = {
   '*.gshifen.com': LOCALHOST_ADDRESS,
   '*.a.shifen.com': LOCALHOST_ADDRESS,
   '*.bilibili.com': LOCALHOST_ADDRESS,
-  // '*': LOCALHOST_ADDRESS,
+  '*': LOCALHOST_ADDRESS,
   // '*': '10.248.63.76',
   // '*.expressjs.com.cn': '10.248.63.76',
 };
@@ -56,8 +56,6 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
   }
 
   if (rdata && type == 1 && kClass === 1) {
-    // console.log(domain.name);
-    // console.log(decordAddress(domain.rdata));
     return { ...domain, rdata: encodeAddress('127.0.0.1') } as DomainNameObject;
   }
   return domain.type === 28 ? false : domain;

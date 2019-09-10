@@ -27,12 +27,10 @@ class TcpConnection extends ProxyBasic {
     const tcpEvent = ProxySocket.createSocketClient(ip, port, true);
     this.initEventCommunication(new EventCommunication(tcpEvent))
     this.eventCommunication.on('link-info', this.responseData());
-    this.eventCommunication.on('error', (error: Error) => {
-      console.log(error);
-      setTimeout(() => {
-        this.eventCommunication.end();
-        this.createEventTcp(SERVER_IP, SERVER_TCP_PORT);
-      }, 5000);
+    this.eventCommunication.on('error', (error: Error) => console.log(error));
+    this.eventCommunication.on('close', () => {
+      this.eventCommunication = null;
+      setTimeout(() => this.createEventTcp(SERVER_IP, SERVER_TCP_PORT),5000);
     });
   }
 
@@ -44,18 +42,16 @@ class TcpConnection extends ProxyBasic {
 
   protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
     const { uid } = PackageUtil.packageSigout(buffer[0]);
-    // console.log(`--client connection pid:${process.pid}  ${ uid }--`);
     tcpEvent.write(buffer[0]);
   };
 
   protected responseData = () => (buffer: Buffer) => {
     const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
-    console.log(`${(this as any).serverName} ${uid} cursor:${cursor}`);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      this.notExistUid(uid, data);
+      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, data);
     }
   };
 
@@ -68,7 +64,7 @@ class TcpConnection extends ProxyBasic {
     proxyProcess.bindUid(uid);
 
     packageSeparation.on('timeout', () => clientSocket.end());
-    packageSeparation.on('sendData', this.send(uid));
+    packageSeparation.on('sendData', this.send(uid, clientSocket));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
     packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
@@ -79,41 +75,31 @@ class TcpConnection extends ProxyBasic {
     clientSocket.on('close', abnormalManage.closeCall());
     clientSocket.on('error', abnormalManage.errorCall());
     
-    abnormalManage.on('end', () => {
-      this.socketMap.delete(uid);
-      proxyProcess.deleteUid(uid);
-      console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
-    });
+    abnormalManage.on('close',this.clientClose(uid));
 
     packageManage.clientDataCall()(data);
   };
 
-  callEvent = (port: number) => (clientSocket: ProxySocket) => {
-    const eventCommunication = this.eventCommunication;
+  callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {
     const defaultUid = uuid();
-    clientSocket.once('data', (data: Buffer) => {
-      const clearListener = () => {
-        removeListenerSuccess();
-        removeListenerError();
-      };
-      const removeListenerSuccess = eventCommunication.on('link-success', ({ uid }: any) => {
-        if (defaultUid === uid) {
-          this.connectionListener(uid, clientSocket)(data);
-          clearListener();
-        }
-      });
-
-      const removeListenerError = eventCommunication.on('link-error', ({ uid }: any) => {
-        if (defaultUid === uid) {
-          clearListener();
-        }
-      });
-      eventCommunication.createLink(defaultUid, port, data);
+    this.eventCommunication.createLink(defaultUid, port, data, (error: Error) => {
+      if (error) {
+        return clientSocket.end();
+      }
+      this.connectionListener(defaultUid, clientSocket)(data);
     });
+  };
+
+  call = (port: number) => (clientSocket: ProxySocket) => {
+    if (!this.eventCommunication) {
+      clientSocket.end();
+      return ;
+    }
+    clientSocket.once('data', this.callEvent(port, clientSocket));
   };
 }
 
 const tcpConnection = new TcpConnection();
 
-const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, tcpConnection.callEvent(CLIENT_TCP_HTTP_PORT));
-const https = ProxyTcp.createTcpServer(443, tcpConnection.callEvent(443));
+const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, tcpConnection.call(CLIENT_TCP_HTTP_PORT));
+const https = ProxyTcp.createTcpServer(443, tcpConnection.call(443));
