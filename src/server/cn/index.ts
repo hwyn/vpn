@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication, Handler } from '../util';
+import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { 
   SERVER_TCP_PORT,

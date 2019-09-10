@@ -26,7 +26,7 @@ export class ProxySocket extends ProxyEventEmitter {
     super(socket, ProxySocket.pipeFns);
     this.onInit();
     this.associatedListener(['data']);
-    this.associatedListener(['end', 'error', 'close', 'connect'], true);
+    this.associatedListener(['end', 'close', 'connect'], true);
     this.socketEmit = this.socket.emit;
     Object.defineProperty(this.socket, 'emit', {
       get: () => (...arg: any[]) => this.proxyEmit.apply(this, arg)
@@ -39,11 +39,12 @@ export class ProxySocket extends ProxyEventEmitter {
       this.waitingWriteList.forEach((buffer: Buffer) => this.write(buffer));
       this.waitingWriteList = [];
     });
-    this.on('error', (error: Error) => {
+    this.socket.on('error', (error: Error) => {
       this.ended = true;
       if (this.connecting) {
         this.emitAsync('connect-error', error);
       }
+      this.emitAsync('error', error);
     });
     if (this.openPackage) {
       this.on('data', (data: Buffer, next: Handler) => this.dilutePackage(data, next));
