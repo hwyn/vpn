@@ -1,11 +1,11 @@
 const path = require('path');
 const baseDir = process.cwd();
 
-module.exports = () => {
+module.exports = (a, b, isDebug) => {
   return {
-    entryFile: 'src/index.ts',
     entry: {
-      cn: path.join(baseDir, 'src/index.ts')
+      cn: path.join(baseDir, 'src/cn.ts'),
+      en: path.join(baseDir, 'src/en.ts')
     }
   }
 };

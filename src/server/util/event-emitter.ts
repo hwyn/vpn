@@ -7,13 +7,11 @@ export class EventEmitter {
   constructor() { }
 
   on(key: string, handler: Handler) {
-    if (!isFunction(handler)) {
-      throw new Error('handler Must function');
-    }
     if (!hasOwnProperty(this.events, key)) {
       this.events[key] = [];
     }
     this.events[key].push(handler);
+    return () => this.remove(key, handler);
   }
 
   /**
@@ -60,7 +58,7 @@ export class EventEmitter {
   emitAsync(...arg: any[]): Promise<any> {
     const key = arg[0];
     if (!hasOwnProperty(this.events, key)) {
-      return Promise.resolve(null);
+      return ;
     }
     arg[1] = arg[1] || void(0);
     this.events[key].forEach((handler: Handler) => handler(...arg.slice(1)));

@@ -1,9 +1,9 @@
 const path = require('path');
 const baseDir = process.cwd();
 
-module.exports = () => {
+module.exports = (a, b, isDebug) => {
   return {
-    entryFile: 'src/en.ts',
+    ...isDebug ? { entryFile: 'src/en.ts' } : { },
     entry: {
       en: path.join(baseDir, 'src/en.ts')
     }

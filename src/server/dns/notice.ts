@@ -196,17 +196,6 @@ export class Notice extends EventEmitter {
     offset = questionWrite.writeRR(answer, offset).end;
     offset = questionWrite.writeRR(authoritative, offset).end;
     questionWrite.writeRR(additional, offset);
-
-    // let bufferArray = [];
-    // for (let i = 0; i < responseNotice.length ; i++) {
-    //   bufferArray.push('0x' + ('00' + responseNotice[i].toString(16)).replace(/^.*(.{2})$/g, '$1'));
-    //   if ((i + 1) % 16 === 0) {
-    //     console.log(bufferArray.join(','));
-    //     bufferArray = [];
-    //   }
-    // }
-    // console.log(bufferArray);
-    // console.log('===============');
     return responseNotice;
   }
 

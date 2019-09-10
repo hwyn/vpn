@@ -1,8 +1,8 @@
 import { ProxyEventEmitter } from "./proxy-event-emitter";
 import { PROCESS_EVENT_TYPE, IS_CLUSER } from '../constant';
-import { PackageUtil } from '../util';
+import { PackageUtil, uuid } from '../util';
 
-const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 
 class ProxyProcess extends ProxyEventEmitter {
@@ -43,6 +43,13 @@ class ProxyProcess extends ProxyEventEmitter {
     }
   }
 
+  stopUidLinkMessage(uid: string) {
+    this.send({ event: STOU_UID_LINK, data: uid});
+    if (!IS_CLUSER) {
+      this.storUidLink(uid); 
+    }
+  }
+
   private udpResponseMessage({ data }: any) {
     this.emitAsync(UDP_RESPONSE_MESSAGE, Buffer.from(data));
   }
@@ -51,10 +58,18 @@ class ProxyProcess extends ProxyEventEmitter {
     this.emitAsync(UDP_REQUEST_MESSAGE, Buffer.from(data));
   }
   
+  private notUidProcess({ uid, buffer }: any) {
+    this.emitAsync(NOT_UID_PROCESS, uid, Buffer.from(buffer.data));
+  }
+
+  private storUidLink(uid: string) {
+    this.emitAsync(STOU_UID_LINK, uid);
+  }
+
   private send(message: any) {
     IS_CLUSER ? this.source.send(message) : null;
   }
-
+  
   private onInit() {
     this.source.on('message', this.eventBus.bind(this));
   }
@@ -63,6 +78,8 @@ class ProxyProcess extends ProxyEventEmitter {
     switch(event) {
       case UDP_RESPONSE_MESSAGE: this.udpResponseMessage(data); break;
       case UDP_REQUEST_MESSAGE: this.udpRequestMessage(data); break;
+      case NOT_UID_PROCESS: this.notUidProcess(data); break;
+      case STOU_UID_LINK: this.storUidLink(data); break;
     }
   }
 }

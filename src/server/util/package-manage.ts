@@ -1,12 +1,11 @@
 /**
  * Created by NX on 2019/8/24.
  */
-import { proxyProcess } from '../net-util/proxy-process';
 import { PackageSeparation, PackageUtil } from './package-separation';
 import { ProxySocket} from "../net-util/proxy-socket";
 import { COMMUNICATION_EVENT } from '../constant';
 
-const { LINK, DATA, CLOSE, ERROR, END } = COMMUNICATION_EVENT;
+const { DATA } = COMMUNICATION_EVENT;
 
 export class PackageManage {
   protected cursor: number = 0;
@@ -18,7 +17,6 @@ export class PackageManage {
   ) { }
 
   distributeCall = (proxySocket: ProxySocket) => ({ data }: any) => {
-    console.log(`${this.type} ${this.uid}--------->${data.length}`);
     proxySocket.write(data);
   };
 }
@@ -30,19 +28,10 @@ export class BrowserManage extends PackageManage{
   
   agentResponseCall = () => (buffer: Buffer) => {
     const { cursor, data, uid } = PackageUtil.packageSigout(buffer);
-    // console.log(`--cn length: ${data.length}  cursor: ${cursor} uid: ${uid}--`);
     this.packageSeparation.splitPackage(buffer);
   }
 
-  clientLinkCall = (port: number, buffer: Buffer) => () => {
-    console.log(`client request ${this.uid}------>${buffer.length}`);
-    const data = PackageUtil.bindPort(port, buffer);
-    this.packageSeparation.mergePackage(LINK, this.uid, data);
-    this.packageSeparation.immediatelySend(this.uid);
-  }
-
   clientDataCall = () => (buffer: Buffer) => {
-    console.log(`client request ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };
@@ -54,7 +43,6 @@ export class ServerManage extends PackageManage{
   }
 
   serverLinkCall = () => (buffer: any) => {
-    console.log(`server response ${this.uid}------>${buffer.length}`);
     this.packageSeparation.mergePackage(DATA, this.uid, buffer);
     this.packageSeparation.immediatelySend(this.uid);
   };

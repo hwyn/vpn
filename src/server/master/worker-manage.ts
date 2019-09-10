@@ -2,7 +2,7 @@ import cluster from 'cluster';
 import { EventEmitter, PackageUtil } from '../util';
 import { PROCESS_EVENT_TYPE } from '../constant';
 
-const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 export class WorkerManage extends EventEmitter {
   private uidSet: Set<string> = new Set();
@@ -24,8 +24,6 @@ export class WorkerManage extends EventEmitter {
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
       runWorker.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
-    } else {
-      console.log(`error----${cursor}----->${uid}`, runWorker);
     }
   }
 
@@ -34,14 +32,26 @@ export class WorkerManage extends EventEmitter {
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
       runWorker.send({ event: 'udp-request-message', data: buffer });
-    } else {
-      console.log(`error----${cursor}----->${uid}`, runWorker);
+    }
+  }
+
+  private distributionStopUidLinkWorker(uid: string) {
+    const runWorker = manageList.getWorker(uid);
+    if (runWorker) {
+      runWorker.send({ event: STOU_UID_LINK, data: uid });
     }
   }
 
   private distributionWorker({ data }: any) {
     const { uid, buffer } = PackageUtil.getUid(Buffer.from(data));
+    const { cursor } = PackageUtil.packageSigout(buffer);
     const runWorker = manageList.getWorker(uid);
+    if (!runWorker) {
+      this.send({ event: NOT_UID_PROCESS, data:{
+         uid,
+         buffer: buffer
+      }});
+    }
     return { runWorker, buffer };
   }
 
@@ -56,6 +66,7 @@ export class WorkerManage extends EventEmitter {
       case DELETE_UID: this.deleteUid(data); break;
       case UDP_REQUEST_MESSAGE: this.distributionRequestWorker(data);break;
       case UDP_RESPONSE_MESSAGE: this.distributionResponseWorker(data);break;
+      case STOU_UID_LINK: this.distributionStopUidLinkWorker(data); break;
     }
   }
 

@@ -1,11 +1,18 @@
 import { DomainNameObject } from './notice';
 import { hasOwnProperty } from '../util';
+import { LOCALHOST_ADDRESS } from '../constant';
 
 const proxy = {
-  '*.baidu.com': '10.248.63.76',
-  '*.wshifen.com': '10.248.63.76',
-  '*.bdstatic.com': '10.248.63.76',
-  '*.gshifen.com': '10.248.63.76',
+  'nodejs.cn': LOCALHOST_ADDRESS,
+  '*.nodejs.cn': LOCALHOST_ADDRESS,
+  'baidu.com':  LOCALHOST_ADDRESS,
+  '*.baidu.com': LOCALHOST_ADDRESS,
+  // '*.wshifen.com': LOCALHOST_ADDRESS,
+  // '*.bdstatic.com': LOCALHOST_ADDRESS,
+  // '*.gshifen.com': LOCALHOST_ADDRESS,
+  // '*.a.shifen.com': LOCALHOST_ADDRESS,
+  // '*.bilibili.com': LOCALHOST_ADDRESS,
+  '*': LOCALHOST_ADDRESS,
   // '*': '10.248.63.76',
   // '*.expressjs.com.cn': '10.248.63.76',
 };
@@ -51,8 +58,6 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
   }
 
   if (rdata && type == 1 && kClass === 1) {
-    console.log(domain.name);
-    console.log(decordAddress(domain.rdata));
     return { ...domain, rdata: encodeAddress('127.0.0.1') } as DomainNameObject;
   }
   return domain.type === 28 ? false : domain;
