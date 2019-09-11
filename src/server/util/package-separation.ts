@@ -144,9 +144,10 @@ export class PackageSeparation extends EventEmitter {
   stickPackage() {
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     let cacheBuffer: Buffer = this.splitCache;
+    let packageSize;
     while (size < cacheBuffer.length) {
       try {
-        const { packageSize } = PackageUtil.unpacking(cacheBuffer);
+        packageSize = PackageUtil.unpacking(cacheBuffer).packageSize;
         if (packageSize > cacheBuffer.length) {
           break;
         }
@@ -155,9 +156,13 @@ export class PackageSeparation extends EventEmitter {
         const { uid, type, buffer } = PackageUtil.unpacking(packageBuffer);
         this.separation({ uid, type, data: buffer });
       } catch(e) {
+        console.log(e);
+        console.log(packageSize);
+        console.log(cacheBuffer);
+        debugger;
         this.emitAsync('timeout');
-        this.splitCursor++;
-        throw e;
+        return ;
+        // throw e;
       }
     }
     this.splitCache = cacheBuffer;

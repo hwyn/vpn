@@ -31,17 +31,27 @@ class TcpConnection extends ProxyBasic {
     });
   }
 
+  /**
+   * udp接收到数据后调用
+   * @param data buffer
+   */
   protected udpMessage(data: Buffer) {
     const { uid, buffer } = PackageUtil.getUid(data);
     const { cursor } = PackageUtil.packageSigout(buffer);
     proxyProcess.responseMessage(data);
   }
 
+  /**
+   * 发送事件到服务端
+   */
   protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
     const { uid } = PackageUtil.packageSigout(buffer[0]);
     tcpEvent.write(buffer[0]);
   };
 
+  /**
+   * 接收到服务端响应数据
+   */
   protected responseData = () => (buffer: Buffer) => {
     const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
@@ -61,7 +71,7 @@ class TcpConnection extends ProxyBasic {
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
 
-    packageSeparation.on('timeout', () => clientSocket.end());
+    packageSeparation.once('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid, clientSocket));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
@@ -69,11 +79,11 @@ class TcpConnection extends ProxyBasic {
     
     clientSocket.on('data', packageManage.clientDataCall());
     clientSocket.on('agent', packageManage.agentResponseCall());
-    clientSocket.on('end', abnormalManage.endCall());
-    clientSocket.on('close', abnormalManage.closeCall());
-    clientSocket.on('error', abnormalManage.errorCall());
+    clientSocket.once('end', abnormalManage.endCall());
+    clientSocket.once('close', abnormalManage.closeCall());
+    clientSocket.once('error', abnormalManage.errorCall());
     
-    abnormalManage.on('close',this.clientClose(uid));
+    abnormalManage.once('close',this.clientClose(uid));
 
     packageManage.clientDataCall()(data);
   };

@@ -63,8 +63,9 @@ export class ProxySocket extends ProxyEventEmitter {
   private dilutePackage(data: Buffer, next: Handler) {
     let cacheBuffer = BufferUtil.concat(this.cacheBuffer, data);
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
+    let packageSize;
     while (size < cacheBuffer.length) {
-      const { packageSize } = PackageUtil.unpacking(cacheBuffer);
+      packageSize = PackageUtil.unpacking(cacheBuffer).packageSize;
       if (packageSize > cacheBuffer.length) {
         break;
       }

@@ -93,7 +93,7 @@ export abstract class ProxyBasic {
   /**
    * 发送消息到代理方
    * @param buffer 
-   * @param clientCursor 
+   * @param clientCursor
    * @param uid 
    */
   private write(buffer: Buffer, clientCursor: number, uid?: string) {

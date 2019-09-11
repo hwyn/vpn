@@ -12,9 +12,9 @@ export const CLIENT_UDP_INITIAL_PORT: number = 6800;
 // 服务端udp初始监听端口
 export const SERVER_UDP_INITIAL_PORT: number = 6900;
 // 客户端代理 最大udp
-export const CLIENT_MAX_UDP_SERVER: number = 1;
+export const CLIENT_MAX_UDP_SERVER: number = 4;
 // 服务端代理 最大udp
-export const SERVER_MAX_UDP_SERVER: number = 1;
+export const SERVER_MAX_UDP_SERVER: number = 3;
 // 客户端tcp http监听端口
 export const CLIENT_TCP_HTTP_PORT: number = 80;
 // 客户端tcp https监听端口

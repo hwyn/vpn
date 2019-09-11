@@ -43,7 +43,7 @@ export class EventCommunication extends ProxyEventEmitter {
   createLink(uid: string, port: number, data: Buffer, callback?: (error?: Error) => void) {
     const { host } = port === 443 ? getHttpsClientHello(data) : getHttp(data);
     const body = BufferUtil.writeGrounUInt([port, host.length], [16, 8]);
-    this.clientLindEventDefault(uid, callback);
+    this.clientLinkEventDefault(uid, callback);
     this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
 
   };
@@ -98,7 +98,7 @@ export class EventCommunication extends ProxyEventEmitter {
     }
   }
 
-  clientLindEventDefault(defaultUid: string, callback?: (error?: Error) => void) {
+  clientLinkEventDefault(defaultUid: string, callback?: (error?: Error) => void) {
     const success = this.on('link-success', ({ uid }: any) => {
       if (uid === defaultUid) {
         callback();
