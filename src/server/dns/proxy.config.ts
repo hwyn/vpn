@@ -58,7 +58,7 @@ export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | bo
   }
 
   if (rdata && type == 1 && kClass === 1) {
-    return { ...domain, rdata: encodeAddress('127.0.0.1') } as DomainNameObject;
+    return { ...domain, rdata } as DomainNameObject;
   }
   return domain.type === 28 ? false : domain;
 }
