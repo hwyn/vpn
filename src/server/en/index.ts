@@ -85,11 +85,10 @@ class TcpConnection extends ProxyBasic {
   callEvent = () => async ({ uid, port, host }: any) => {
     const eventCommunication = this.eventCommunication;
     if (!eventCommunication) return ;
-    
-    const address = await getAddress(host);
-    console.log(`--------server connection ${ uid }----------`);
-    console.log(`Host: ${host} address: ${address} -- ${port}`);
     try {
+      const address = await getAddress(host);
+      console.log(`--------server connection ${ uid }----------`);
+      console.log(`Host: ${host} address: ${address} -- ${port}`);
       if (address === LOCALHOST_ADDRESS) {
         throw new Error(`address is ${LOCALHOST_ADDRESS}`);
       } 

@@ -1,8 +1,8 @@
 import { BufferUtil } from './buffer-util';
 
 export const getHttp = (buffer: Buffer) => {
-  const match = buffer.toString().match(/([^\r\n]+)/g);
-  const host = match[1].replace('Host: ', '');
+  const match = buffer.toString().match(/([^\r\n]+)/g).filter((item: string) => /^Host: [\S]+$/.test(item))[0];
+  const host = (match || '').replace('Host: ', '');
   return { host };
 }
 

@@ -44,8 +44,11 @@ export class EventCommunication extends ProxyEventEmitter {
     const { host } = port === 443 ? getHttpsClientHello(data) : getHttp(data);
     const body = BufferUtil.writeGrounUInt([port, host.length], [16, 8]);
     this.clientLinkEventDefault(uid, callback);
-    this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
-
+    if (!host) {
+      this.emitAsync('link-error', { uid });
+    } else {
+      this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
+    }
   };
 
   parseLink(uid: string, link: Buffer): { uid: string, port: number | bigint, host: string} {
