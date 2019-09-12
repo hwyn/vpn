@@ -84,7 +84,11 @@ export class PackageUtil {
   }
 
   static isEventPackage(buffer: Buffer): boolean {
-    return PackageUtil.TYPE_BYTE_SIZE === buffer.length;
+    let isEvent = PackageUtil.TYPE_BYTE_SIZE === buffer.length;
+    if (isEvent) {
+      isEvent = buffer.readUInt8(1) < 5;
+    }
+    return isEvent;
   }
 }
 
@@ -132,6 +136,13 @@ export class PackageSeparation extends EventEmitter {
     this.mergeCache = Buffer.concat([mergeCache, packageBuffer], mergeCache.length + packageBuffer.length);
     const mergeList: Buffer[] = [];
     while (this.mergeCache.length > PACKAGE_MAX_SIZE) {
+      if (PACKAGE_MAX_SIZE + PackageUtil.TYPE_BYTE_SIZE === this.mergeCache.length) {
+        const offset =  PACKAGE_MAX_SIZE -  PackageUtil.TYPE_BYTE_SIZE;
+        mergeList.push(this.mergeCache.slice(0, offset));
+        mergeList.push(this.mergeCache.slice(offset));
+        this.mergeCache = Buffer.alloc(0);
+        continue;
+      }
       const sendBuffer = this.mergeCache.slice(0, PACKAGE_MAX_SIZE);
       this.mergeCache = this.mergeCache.slice(PACKAGE_MAX_SIZE);
       mergeList.push(sendBuffer);
@@ -144,26 +155,16 @@ export class PackageSeparation extends EventEmitter {
   stickPackage() {
     const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
     let cacheBuffer: Buffer = this.splitCache;
-    let packageSize;
+    let packageSize: number | bigint;
     while (size < cacheBuffer.length) {
-      try {
-        packageSize = PackageUtil.unpacking(cacheBuffer).packageSize;
-        if (packageSize > cacheBuffer.length) {
-          break;
-        }
-        const packageBuffer = cacheBuffer.slice(0, packageSize as any);
-        cacheBuffer = cacheBuffer.slice(packageSize as any);
-        const { uid, type, buffer } = PackageUtil.unpacking(packageBuffer);
-        this.separation({ uid, type, data: buffer });
-      } catch(e) {
-        console.log(e);
-        console.log(packageSize);
-        console.log(cacheBuffer);
-        debugger;
-        this.emitAsync('timeout');
-        return ;
-        // throw e;
+      packageSize = PackageUtil.unpacking(cacheBuffer).packageSize;
+      if (packageSize > cacheBuffer.length) {
+        break;
       }
+      const packageBuffer = cacheBuffer.slice(0, packageSize as any);
+      cacheBuffer = cacheBuffer.slice(packageSize as any);
+      const { uid, type, buffer } = PackageUtil.unpacking(packageBuffer);
+      this.separation({ uid, type, data: buffer });
     }
     this.splitCache = cacheBuffer;
   }
@@ -180,8 +181,7 @@ export class PackageSeparation extends EventEmitter {
     while (splitList.has(this.splitCursor)) {
       this.splitCache = BufferUtil.concat(this.splitCache, splitList.get(this.splitCursor));
       this.stickPackage();
-      this.splitList.delete(this.splitCursor);
-      this.splitCursor++;
+      this.splitList.delete(this.splitCursor++);
     }
     
     if (cursor > this.splitCursor) {
@@ -199,6 +199,7 @@ export class PackageSeparation extends EventEmitter {
       this.mergeCursor++;
       return sendPackage;
     });
+
     if (bufferList.length) {
       isEvent ? this.emitAsync('sendEvent', bufferList) : this.emitSync('sendData', bufferList);
     }
