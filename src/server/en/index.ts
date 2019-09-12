@@ -92,7 +92,7 @@ class TcpConnection extends ProxyBasic {
     try {
       if (address === LOCALHOST_ADDRESS) {
         throw new Error(`address is ${LOCALHOST_ADDRESS}`);
-      } 
+      }
       const clientSocket = ProxySocket.createSocketClient(address, port);
       clientSocket.once('connect', this.connectionListener(uid, clientSocket));
       clientSocket.once('connect', eventCommunication.createLinkSuccess(uid));

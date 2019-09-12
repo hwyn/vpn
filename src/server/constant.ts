@@ -1,8 +1,8 @@
 // 采用多核部署
-export const IS_CLUSER: boolean = false;
+export const IS_CLUSER: boolean = true;
 
 // 本机地址
-export const LOCALHOST_ADDRESS = '127.0.0.1';
+export const LOCALHOST_ADDRESS = '10.248.63.113';
 // 客户端 ip地址
 export const CLIENT_IP: string = LOCALHOST_ADDRESS;
 // 服务端 ip地址
