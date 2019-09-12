@@ -1,5 +1,6 @@
 import { ProxySocket, ProxyTcp } from '../net-util';
 import { TcpConnection } from './tcp-connection';
+import { AgreementUtil } from '../util/agreement-util';
 import { 
   SERVER_TCP_PORT,
   SERVER_IP,
@@ -7,6 +8,7 @@ import {
 } from '../constant';
 
 const tcpEvent = ProxySocket.createSocketClient(SERVER_IP, SERVER_TCP_PORT, true);
+
 tcpEvent.once('connect', () => {
   const tcpConnection = new TcpConnection();
   tcpConnection.createEventTcp(tcpEvent);
