@@ -51,7 +51,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
     this.eventCommunication.on('close', () => {
       this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.end());
       this.eventCommunication = null;
-      this.emitAsync('close');
+      this.emitAsync('close', this.socketID);
     });
   }
 

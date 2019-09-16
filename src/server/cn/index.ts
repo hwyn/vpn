@@ -11,7 +11,6 @@ import {
 } from '../constant';
 
 const manage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
-let clientHttp = () => {};
 
 manage.on('udp-message', (buffer: Buffer) => proxyProcess.responseMessage(buffer));
 manage.on('message', (tcpConnection: TcpConnection, buffer: Buffer) => tcpConnection.responseData()(buffer));
@@ -24,14 +23,8 @@ const agreement = new AgreementClientUtil(SERVER_IP, SERVER_TCP_PORT, (socket: P
   tcpConnection.initUdpClient(serverUdpInitialPort, serverMaxUdpServer);
   tcpConnection.createEventTcp(socket);
   manage.setTcpConnection(socketID, tcpConnection);
-
-  clientHttp = () => {
+  tcpConnection.once('close', () => {
     http.close(() => console.info('http close'));
     https.close(() => console.info('https close'));
-  };
-});
-
-agreement.on('close', () => {
-  clientHttp();
-  clientHttp = () => {};
+  });
 });
