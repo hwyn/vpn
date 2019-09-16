@@ -31,14 +31,14 @@ export class WorkerManage extends EventEmitter {
     const { runWorker, buffer } = this.distributionWorker(event);
     const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
-      runWorker.send({ event: 'udp-request-message', data: buffer });
+      runWorker.send({ event: UDP_REQUEST_MESSAGE, data: buffer });
     }
   }
 
-  private distributionStopUidLinkWorker(uid: string) {
+  private distributionStopUidLinkWorker({ uid, buffer }: any) {
     const runWorker = manageList.getWorker(uid);
     if (runWorker) {
-      runWorker.send({ event: STOU_UID_LINK, data: uid });
+      runWorker.send({ event: STOU_UID_LINK, data: { uid, buffer } });
     }
   }
 
@@ -47,7 +47,7 @@ export class WorkerManage extends EventEmitter {
     const { cursor } = PackageUtil.packageSigout(buffer);
     const runWorker = manageList.getWorker(uid);
     if (!runWorker) {
-      this.send({ event: NOT_UID_PROCESS, data:{
+      this.send({ event: NOT_UID_PROCESS, data: {
          uid,
          buffer: buffer
       }});

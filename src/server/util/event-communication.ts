@@ -1,7 +1,8 @@
 import { PackageUtil } from './package-separation';
 import { BufferUtil } from './buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
-import { ProxySocket, ProxyEventEmitter } from '../net-util';
+import { ProxySocket } from '../net-util/proxy-socket';
+import { ProxyEventEmitter } from '../net-util/proxy-event-emitter';
 import { uuid } from './tools';
 
 const LINK = 0;
@@ -77,10 +78,15 @@ export class EventCommunication extends ProxyEventEmitter {
     return this.createHeader(uid, type);
   }
   
-  createStopResponse(uid: string) {
-    this.write(this.createEvent(uid, STOP));
+  createStopResponse(socketID: string, uid: string) {
+    const socketBuffer = BufferUtil.writeGrounUInt([socketID.length], [8]);
+    const header = this.createEvent(uid, STOP);
+    this.write(BufferUtil.concat(header, socketBuffer, socketID));
   }
 
+  unStopResponse(uid: string, body: Buffer) {
+    this.emitAsync('link-stop', uid, body);
+  }
   
   createLinkEror =  (uid: string) => () => {
     this.write(this.createEvent(uid, LINKERROR));
@@ -97,7 +103,7 @@ export class EventCommunication extends ProxyEventEmitter {
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
       case ONELINK: this.parseOneLink(uid, body); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
-      case STOP: this.emitAsync('link-stop', uid);
+      case STOP: this.unStopResponse(uid, body); break;
     }
   }
 

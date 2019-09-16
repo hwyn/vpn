@@ -43,10 +43,10 @@ class ProxyProcess extends ProxyEventEmitter {
     }
   }
 
-  stopUidLinkMessage(uid: string) {
-    this.send({ event: STOU_UID_LINK, data: uid});
+  stopUidLinkMessage(uid: string, buffer: Buffer) {
+    this.send({ event: STOU_UID_LINK, data: { uid, buffer }});
     if (!IS_CLUSER) {
-      this.storUidLink(uid); 
+      this.storUidLink({ uid, buffer: { data: buffer }}); 
     }
   }
 
@@ -62,8 +62,8 @@ class ProxyProcess extends ProxyEventEmitter {
     this.emitAsync(NOT_UID_PROCESS, uid, Buffer.from(buffer.data));
   }
 
-  private storUidLink(uid: string) {
-    this.emitAsync(STOU_UID_LINK, uid);
+  private storUidLink({ uid, buffer }: any) {
+    this.emitAsync(STOU_UID_LINK, uid, Buffer.from(buffer.data));
   }
 
   private send(message: any) {

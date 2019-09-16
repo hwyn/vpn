@@ -3,38 +3,34 @@ import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventComm
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
 import { 
-  SERVER_UDP_INITIAL_PORT,
-  SERVER_MAX_UDP_SERVER,
-  CLIENT_UDP_INITIAL_PORT,
   PROCESS_EVENT_TYPE,
-  CLIENT_IP,
-  CLIENT_MAX_UDP_SERVER,
   LOCALHOST_ADDRESS
 } from '../constant';
 
-const { UDP_REQUEST_MESSAGE, NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
+const { NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 export class TcpConnection extends ProxyBasic {
-  constructor() {
-    super('server');
-    this.createUdpClient(CLIENT_IP, CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
-    this.createUdpServer(SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
-    proxyProcess.on(UDP_REQUEST_MESSAGE, this.requestData());
-  }
-
-  protected createEventTcp(eventTcp: ProxySocket) {
-    this.initEventCommunication(new EventCommunication(eventTcp));
-    this.eventCommunication.on('link-info', this.requestData());
+  constructor(socketID: string) {
+    super(socketID, 'server');
   }
 
   /**
-   * udp接收到数据后调用
-   * @param data 数据
+   * 初始化响应udp列表
+   * @param host string
+   * @param initialPort number 
+   * @param maxClientNumber number
    */
-  protected udpMessage(data: Buffer): void {
-    const { uid, buffer } = PackageUtil.getUid(data);
-    const { cursor } = PackageUtil.packageSigout(buffer);
-    proxyProcess.requestMessage(data);
+  public initUdpClient(host: string, initialPort: number, maxClientNumber: number) {
+    this.createUdpClient(host, initialPort, maxClientNumber);
+  }
+
+  /**
+   * 创建tcp事件通讯
+   * @param eventTcp ProxySocket
+   */
+  protected createEventTcp(eventTcp: ProxySocket) {
+    this.initEventCommunication(new EventCommunication(eventTcp));
+    this.eventCommunication.on('link-info', this.requestData());
   }
 
   /**
@@ -47,13 +43,13 @@ export class TcpConnection extends ProxyBasic {
   /**
    * 接收到客户端提发送数据
    */
-  protected requestData = () => (buffer: Buffer) => {
+  public requestData = () => (buffer: Buffer) => {
     const { uid, data, cursor } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, data);
+      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, this.writeSocketID(this.socketID, data));
     }
   };
 

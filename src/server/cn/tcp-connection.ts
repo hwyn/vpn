@@ -2,38 +2,24 @@ import { ProxySocket, proxyProcess } from '../net-util';
 import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { 
-  SERVER_UDP_INITIAL_PORT,
-  SERVER_MAX_UDP_SERVER,
   SERVER_IP,
-  CLIENT_UDP_INITIAL_PORT,
-  CLIENT_MAX_UDP_SERVER, 
   PROCESS_EVENT_TYPE,
 } from '../constant';
 
-const { UDP_RESPONSE_MESSAGE, NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
+const { NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 export class TcpConnection extends ProxyBasic {
-  constructor() {
-    super('client');
-    this.createUdpClient(SERVER_IP, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
-    this.createUdpServer(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
-    
-    proxyProcess.on(UDP_RESPONSE_MESSAGE, this.responseData());
+  constructor(socketID: string) {
+    super(socketID, 'client');
+  }
+
+  public initUdpClient(initialPort: number, maxClientNumber: number) {
+    this.createUdpClient(SERVER_IP, initialPort, maxClientNumber);
   }
 
   public createEventTcp(eventTcp: ProxySocket) {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link-info', this.responseData());
-  }
-
-  /**
-   * udp接收到数据后调用
-   * @param data buffer
-   */
-  protected udpMessage(data: Buffer) {
-    const { uid, buffer } = PackageUtil.getUid(data);
-    const { cursor } = PackageUtil.packageSigout(buffer);
-    proxyProcess.responseMessage(data);
   }
 
   /**
@@ -47,13 +33,13 @@ export class TcpConnection extends ProxyBasic {
   /**
    * 接收到服务端响应数据
    */
-  protected responseData = () => (buffer: Buffer) => {
+  public responseData = () => (buffer: Buffer) => {
     const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, data);
+      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, this.writeSocketID(this.socketID, data));
     }
   };
 
@@ -65,7 +51,6 @@ export class TcpConnection extends ProxyBasic {
 
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
-
     packageSeparation.once('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid, clientSocket));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));

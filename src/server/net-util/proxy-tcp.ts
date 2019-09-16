@@ -8,9 +8,10 @@ export class ProxyTcp extends ProxyEventEmitter {
   };
 
   private tcpServer: Server = this.source as Server;
+  [x: string]: any;
 
   constructor(public port: number, private connectListener: (socket: ProxySocket) => void, private openPackage?: boolean) {
-    super(createServer());
+    super(createServer(), ['close']);
     this.associatedListener(['listening', 'connection', 'close', 'error'], true);
     this.onInit();
     this.listen(port);
