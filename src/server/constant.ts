@@ -1,5 +1,5 @@
 // 采用多核部署
-export const IS_CLUSER: boolean = false;
+export const IS_CLUSER: boolean = true;
 
 // 本机地址
 export const LOCALHOST_ADDRESS = '10.248.63.113';

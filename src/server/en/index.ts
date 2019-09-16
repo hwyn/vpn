@@ -14,6 +14,6 @@ const agreement = new AgreementServerUtil(SERVER_TCP_PORT, (socket: ProxySocket,
   const { socketID, clientUdpInitialPort, clientMaxUdpServer, clientIp } = clientInfo;
   const tcpConnection = new TcpConnection(socketID);
   tcpConnection.initUdpClient(clientIp, clientUdpInitialPort, clientMaxUdpServer);
-  tcpConnection.call()(socket);
+  tcpConnection.createEventTcp(socket);
   manage.setTcpConnection(socketID, tcpConnection);
 });

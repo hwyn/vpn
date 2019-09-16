@@ -28,9 +28,10 @@ export class TcpConnection extends ProxyBasic {
    * 创建tcp事件通讯
    * @param eventTcp ProxySocket
    */
-  protected createEventTcp(eventTcp: ProxySocket) {
+  public createEventTcp(eventTcp: ProxySocket) {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link-info', this.requestData());
+    this.eventCommunication.on('link', this.callEvent());
   }
 
   /**
@@ -94,10 +95,5 @@ export class TcpConnection extends ProxyBasic {
     } catch(e) {
       eventCommunication.createLinkEror(uid);
     }
-  }
-
-  call = () => (eventTcp: ProxySocket) => {
-    this.createEventTcp(eventTcp);
-    this.eventCommunication.on('link', this.callEvent());
   }
 }
