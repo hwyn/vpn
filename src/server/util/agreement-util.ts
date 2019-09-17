@@ -78,11 +78,11 @@ export class AgreementClientUtil extends AgreementUtil {
   private socket: ProxySocket
   constructor(private ip: string, private port: number, private connectListener: (socket: ProxySocket, clientInfo?: any) => void) {
     super();
-    this.socketID = uuid();
     this.createSocketClient();
   }
 
   private createSocketClient() {
+    this.socketID = uuid();
     this.socket = ProxySocket.createSocketClient(this.ip, this.port, true);
     this.socket.on('close', () => setTimeout(() => this.createSocketClient(), 5000));
     this.socket.on('close', () => this.emitAsync('close'));

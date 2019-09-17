@@ -24,7 +24,11 @@ export class ProxyTcp extends ProxyEventEmitter {
     this.on('listening', () => console.log(`TCP listening:: ${this.port}`))
   }
 
-  listen(port: number) {
+  public resetConnectListener(connectListener: (socket: ProxySocket) => void) {
+    this.connectListener = connectListener;
+  }
+
+  public listen(port: number) {
     this.tcpServer.listen(port, () => {});
   }
 }

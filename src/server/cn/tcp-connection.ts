@@ -36,6 +36,7 @@ export class TcpConnection extends ProxyBasic {
   public responseData = () => (buffer: Buffer) => {
     const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
+
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
@@ -51,6 +52,7 @@ export class TcpConnection extends ProxyBasic {
 
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
+
     packageSeparation.once('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid, clientSocket));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
@@ -80,10 +82,6 @@ export class TcpConnection extends ProxyBasic {
   };
 
   call = (port: number) => (clientSocket: ProxySocket) => {
-    if (!this.eventCommunication) {
-      clientSocket.end();
-      return ;
-    }
     clientSocket.once('data', this.callEvent(port, clientSocket));
   };
 }

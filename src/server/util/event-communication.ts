@@ -13,7 +13,6 @@ const STOP = 7;
 
 export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
-  private uid: string = uuid();
   constructor(private eventSocket: ProxySocket) {
     super(eventSocket);
     this.mappingFnNames = ['end', 'write'];
