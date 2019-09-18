@@ -45,7 +45,7 @@ export class AgreementUtil extends EventEmitter {
     const [ bodyTitle, body ] = BufferUtil.unConcat(buffer, [ 32 ]);
     const [ clientUdpInitialPort, clientMaxUdpServer, ipLength ] = BufferUtil.readGroupUInt(bodyTitle, [16, 8, 8]);
     const clientIp = body.slice(0, ipLength as number).toString();
-    this.emitAsync('client-hello', { socketID, clientUdpInitialPort, clientMaxUdpServer, ipLength });
+    this.emitAsync('client-hello', { socketID, clientUdpInitialPort, clientMaxUdpServer, clientIp });
     return { socketID, clientUdpInitialPort, clientMaxUdpServer, clientIp };
   }
 
