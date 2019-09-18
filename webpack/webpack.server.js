@@ -6,6 +6,7 @@ module.exports = (a, b, isDebug) => {
     entry: {
       cn: path.join(baseDir, 'src/cn.ts'),
       en: path.join(baseDir, 'src/en.ts')
-    }
+    },
+    isNodExternals: false
   }
 };

@@ -10,6 +10,6 @@ export const getAddress = (host: string, isIpv6?: boolean): Promise<string> => {
     resolveDns(host, (error, address) => {
       if (error) reject(error);
       else resolve(address[0]);
-    })
+    });
   });
 };
