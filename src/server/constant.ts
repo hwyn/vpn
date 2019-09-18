@@ -1,6 +1,6 @@
 import { getLocalhostIP } from './net-util/os-util';
 // 采用多核部署
-export const IS_CLUSER: boolean = false;
+export const IS_CLUSER: boolean = true;
 
 // 本机地址
 export const LOCALHOST_ADDRESS = getLocalhostIP();
@@ -38,7 +38,7 @@ export const PROCESS_EVENT_TYPE = {
   NOT_UID_PROCESS: 'not-uid-process',
   STOU_UID_LINK: 'stor-uid-link',
 };
-console.log('LOCALHOST_ADDRESS', LOCALHOST_ADDRESS);
+
 // socket通讯事件
 export const COMMUNICATION_EVENT = {
   LINK: 0,
