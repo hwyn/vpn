@@ -1,6 +1,6 @@
-import { getLocalhostIP } from './net-util/os-util';
+import { getLocalhostIP, PLATFORM } from './util/os-util';
 // 采用多核部署
-export const IS_CLUSER: boolean = true;
+export const IS_CLUSER: boolean = PLATFORM !== 'win32';
 
 // 本机地址
 export const LOCALHOST_ADDRESS = getLocalhostIP();
