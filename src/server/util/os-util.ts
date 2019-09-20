@@ -1,5 +1,8 @@
 import os, { NetworkInterfaceInfo } from 'os';
+import dns from 'dns';
 import { spawn, ChildProcess } from 'child_process';
+
+export const LOCSLHOST_DNS = dns.getServers();
 
 export const PLATFORM = os.platform();
 

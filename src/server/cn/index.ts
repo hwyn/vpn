@@ -10,7 +10,6 @@ import {
   CLIENT_MAX_UDP_SERVER,
 } from '../constant';
 
-
 const tcpConnectionManage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
 
 tcpConnectionManage.on('udp-message', (buffer: Buffer) => proxyProcess.responseMessage(buffer));
