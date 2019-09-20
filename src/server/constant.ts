@@ -1,12 +1,12 @@
-import { getLocalhostIP, PLATFORM, LOCSLHOST_DNS } from './util/os-util';
+import { getIPv4Address, PLATFORM, LOCSLHOST_DNS } from './util/os-util';
 // 采用多核部署
 export const IS_CLUSER: boolean = PLATFORM !== 'win32';
 // 本机地址
-export const LOCALHOST_ADDRESS = getLocalhostIP();
+export const LOCALHOST_ADDRESS = getIPv4Address();
 // 客户端 ip地址
 export const CLIENT_IP: string = LOCALHOST_ADDRESS;
 // 服务端 ip地址
-export const SERVER_IP: string = '10.248.63.113';
+export const SERVER_IP: string = LOCALHOST_ADDRESS;
 // 客户端udp初始监听端口
 export const CLIENT_UDP_INITIAL_PORT: number = 6800;
 // 服务端udp初始监听端口
@@ -24,7 +24,7 @@ export const SERVER_TCP_PORT: number = 8000;
 // 数据包最大size
 export const PACKAGE_MAX_SIZE: number = 3980;
 // 客户端 dns 地址
-export const CN_DNS_ADDRESS = LOCSLHOST_DNS[0];
+export const CN_DNS_ADDRESS = '192.168.1.1';
 // 服务端 dns 地址
 export const EN_DNS_ADDRESS = CN_DNS_ADDRESS;
 
