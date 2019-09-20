@@ -13,7 +13,7 @@ export class PackageUtil {
   static PORT_BYTE_SIZE: 16 = 16;
   static UID_BYTE_SIZE: 8 = 8;
   static TYPE_BYTE_SIZE: 8 = 8;
-  static CURSOR_SIZE: 32 = 32;
+  static CURSOR_SIZE: 8 = 8;
   static PACKAGE_SIZE: 32 = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
@@ -95,9 +95,9 @@ export class PackageUtil {
 export class PackageSeparation extends EventEmitter {
   private timeout: number = 1000;
   private clearTimeout: () => void | null;
-  private mergeCursor: number = 0;
+  private _mergeCursor: number = 0;
   private mergeCache: Buffer = Buffer.alloc(0);
-  private splitCursor: number = 0;
+  private _splitCursor: number = 0;
   private splitCache: Buffer = Buffer.alloc(0);
   private splitList: Map<number | bigint, Buffer> = new Map();
   private lossPacketCount: number;
@@ -184,7 +184,7 @@ export class PackageSeparation extends EventEmitter {
       this.splitList.delete(this.splitCursor++);
     }
     
-    if (cursor > this.splitCursor) {
+    if (this.splitList.size !== 0) {
       !this.clearTimeout && this.factoryTimout(uid);
     } else {
       this.clearTimeout && this.clearTimeout();
@@ -244,5 +244,21 @@ export class PackageSeparation extends EventEmitter {
   immediatelySend(uid: string) {
     this.send(uid, this.mergeCache);
     this.mergeCache = Buffer.alloc(0);
+  }
+
+  get splitCursor() {
+    return this._splitCursor;
+  }
+
+  set splitCursor(val: number) {
+    this._splitCursor = val >= Math.pow(2, PackageUtil.CURSOR_SIZE) ? 0 : val;
+  }
+
+  get mergeCursor() {
+    return this._mergeCursor;
+  }
+
+  set mergeCursor(val: number) {
+    this._mergeCursor = val >= Math.pow(2, PackageUtil.CURSOR_SIZE) ? 0 : val;
   }
 }
