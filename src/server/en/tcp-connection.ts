@@ -85,7 +85,7 @@ export class TcpConnection extends ProxyBasic {
       const address = await getAddress(host);
       console.log(`--------server connection ${ uid }----------`);
       console.log(`Host: ${host} address: ${address} -- ${port}`);
-      if (address === LOCALHOST_ADDRESS) {
+      if (address === LOCALHOST_ADDRESS || (address === '127.0.0.1' && [80, 443].includes(port))) {
         throw new Error(`address is ${LOCALHOST_ADDRESS}`);
       }
       const clientSocket = ProxySocket.createSocketClient(address, port);

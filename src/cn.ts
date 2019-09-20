@@ -19,6 +19,6 @@ if (!IS_CLUSER || cluster.isMaster) {
   require('./server/dns');
   let clearDNS = () => {};
   setLocalhostDNS(getIPv4Address(), getIPv6Address()).then(clear => clearDNS = clear);
-  ['SIGHUP', 'SIGINT', 'SIGBREAK'].forEach((event: any) => process.on(event, () => ps.exit(1)));
+  ['SIGHUP', 'SIGINT', 'SIGBREAK'].forEach((event: any) => process.on(event, () => process.exit(1)));
   process.on('exit', () => clearDNS());
 }
