@@ -20,12 +20,7 @@ const spawnPlatform = (command: string, options?: any) => {
     ...options
   }));
   const cp = spawn.apply(undefined, spawnArgs) as ChildProcess;
-  try {
-    cp.stderr && cp.stderr.on('data', (data: Buffer) => process.stderr.write(data));
-  } catch(e) {
-    console.log(cp);
-    console.log(e);
-  }
+  cp.stderr && cp.stderr.on('data', (data: Buffer) => process.stderr.write(data));
   return cp;
 }
 
