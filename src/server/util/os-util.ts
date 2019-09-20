@@ -7,14 +7,22 @@ export const PLATFORM = os.platform();
  * 分平台执行命令
  * @param command 命令
  */
-const spawnPlatform = (command: string) => {
+const spawnPlatform = (command: string, options?: any) => {
   const isWIn32 = PLATFORM === 'win32';
   const spawnArgs: any[] = isWIn32 ? [process.env.ComSpec || 'cmd.exe'] : ['sh'];
   const spawnFlags: any [] = isWIn32 ? ['/d', '/s', '/c'] : ['-c'];
   spawnFlags.push(command);
-  spawnArgs.push(spawnFlags);
+  spawnArgs.push(spawnFlags, Object.assign({
+    env: Object.assign({}, process.env),
+    ...options
+  }));
   const cp = spawn.apply(undefined, spawnArgs) as ChildProcess;
-  cp.stderr.on('data', (data: Buffer) => process.stderr.write(data));
+  try {
+    cp.stderr && cp.stderr.on('data', (data: Buffer) => process.stderr.write(data));
+  } catch(e) {
+    console.log(cp);
+    console.log(e);
+  }
   return cp;
 }
 
@@ -75,14 +83,13 @@ export const setLocalhostDNS = async (dns: string) => {
   let commandSet: string, commandClear: string;
   if (PLATFORM === 'win32') {
     commandSet = `netsh interface ip set dns "${name}" static ${dns}`;
-    commandClear = `netsh interface ip set dns "${name}" dhcp`
+    commandClear = `netsh interface ip set dns "${name}" dhcp`;
   } else {
     commandSet = `networksetup -setdnsservers ${name} ${dns}`;
     commandClear = `networksetup -setdnsservers ${name} empty`
   }
-  console.log(commandSet);
-  spawnPlatform(commandSet);
-  return () => spawnPlatform(commandClear);
+  spawnPlatform(commandSet).unref();
+  return () => spawnPlatform(commandClear, { detached: true, stdio: 'ignore' }).unref();
 };
 
 export const getLocalhostIP = (): string => getLocahostInterface().address;

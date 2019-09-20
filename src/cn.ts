@@ -3,32 +3,30 @@ import { getLocalhostIP, setLocalhostDNS } from './server/util/os-util';
 import cluster from 'cluster';
 import { cpus } from 'os';
 
-let clientDNS = Promise.resolve(() => {});
-const processExit = () => {
-  [
-    'exit',
-    'SIGHUP',
-    'SIGINT'
-  ].forEach(
-    (event: any) => process.on(event, () => clientDNS.then((client) => client()))
-  );
+let clearDNS = () => {};
+const processExit = (ps: any) => {
+  ['SIGHUP', 'SIGINT'].forEach((event: any) => ps.on(event, (val: any) => ps.exit(1)));
+  ps.on('exit', (val: any) => {
+    clearDNS();
+    clearDNS = () => {};
+  });
 }
 
 if (IS_CLUSER && cluster.isMaster) {
   let workerLength = cpus().length;
-  clientDNS = setLocalhostDNS(getLocalhostIP());
+  setLocalhostDNS(getLocalhostIP()).then(clear => clearDNS = clear);
   while (workerLength > 0) {
     cluster.fork();
     workerLength--;
   }
-  processExit();
+  processExit(process);
   require('./server/dns');
   require('./server/master');
 } else {
   require('./server/cn');
   if (!IS_CLUSER) {
     require('./server/dns');
-    clientDNS = setLocalhostDNS(getLocalhostIP());
-    processExit();
+    setLocalhostDNS(getLocalhostIP()).then(clear => clearDNS = clear);
+    processExit(process);
   }
 }

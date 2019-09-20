@@ -7,7 +7,7 @@ export const LOCALHOST_ADDRESS = getLocalhostIP();
 // 客户端 ip地址
 export const CLIENT_IP: string = LOCALHOST_ADDRESS;
 // 服务端 ip地址
-export const SERVER_IP: string = LOCALHOST_ADDRESS;
+export const SERVER_IP: string = '10.248.63.113';
 // 客户端udp初始监听端口
 export const CLIENT_UDP_INITIAL_PORT: number = 6800;
 // 服务端udp初始监听端口
