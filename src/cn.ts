@@ -5,11 +5,8 @@ import { cpus } from 'os';
 
 let clearDNS = () => {};
 const processExit = (ps: any) => {
-  ['SIGHUP', 'SIGINT'].forEach((event: any) => ps.on(event, (val: any) => ps.exit(1)));
-  ps.on('exit', (val: any) => {
-    clearDNS();
-    clearDNS = () => {};
-  });
+  ['SIGHUP', 'SIGINT', 'SIGBREAK'].forEach((event: any) => ps.on(event, () => ps.exit(1)));
+  ps.on('exit', () => clearDNS());
 }
 
 if (IS_CLUSER && cluster.isMaster) {
