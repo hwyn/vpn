@@ -2,6 +2,7 @@ import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
 import { TcpConnection } from './tcp-connection';
 import { AgreementClientUtil } from '../util/agreement-util';
 import { TcpConnectionManage } from '../util/tcp-connection-manage';
+import { EventEmitter } from '../util/event-emitter';
 import {
   SERVER_TCP_PORT,
   SERVER_IP,
@@ -10,23 +11,43 @@ import {
   CLIENT_MAX_UDP_SERVER,
 } from '../constant';
 
-const tcpConnectionManage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
+class ListenerClient extends EventEmitter {
+  private socketID: string;
+  private agreement: AgreementClientUtil;
+  private tcpConnectionManage: TcpConnectionManage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
+  constructor() {
+    super();
+    this.onInit();
+  }
 
-tcpConnectionManage.on('udp-message', (buffer: Buffer) => proxyProcess.responseMessage(buffer));
-tcpConnectionManage.on('message', (tcpConnection: TcpConnection, buffer: Buffer) => tcpConnection.responseData()(buffer));
+  onInit() {
+    this.agreement = new AgreementClientUtil(SERVER_IP, SERVER_TCP_PORT, this.connectListener.bind(this));
+    this.tcpConnectionManage.on('udp-message', (buffer: Buffer) => proxyProcess.responseMessage(buffer));
+    this.tcpConnectionManage.on('message', (tcpConnection: TcpConnection, buffer: Buffer) => {
+      tcpConnection.responseData()(buffer);
+    });
+  }
 
-const agreement = new AgreementClientUtil(SERVER_IP, SERVER_TCP_PORT, (socket: ProxySocket, serverInfo: any) => {
-  const { socketID, serverUdpInitialPort, serverMaxUdpServer } = serverInfo;
-  const tcpConnection = new TcpConnection(socketID);
-  const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, tcpConnection.call(CLIENT_TCP_HTTP_PORT));
-  const https = ProxyTcp.createTcpServer(443, tcpConnection.call(443));
+  connectListener(socket: ProxySocket, serverInfo: any) {
+    const { socketID, serverUdpInitialPort, serverMaxUdpServer } = serverInfo;
+    const tcpConnection = new TcpConnection(socketID);
+    
+    tcpConnection.initUdpClient(serverUdpInitialPort, serverMaxUdpServer);
+    tcpConnection.createEventTcp(socket);
+    this.tcpConnectionManage.setTcpConnection(socketID, tcpConnection);
+    this.socketID = socketID;
+  }
   
-  tcpConnection.initUdpClient(serverUdpInitialPort, serverMaxUdpServer);
-  tcpConnection.createEventTcp(socket);
-  tcpConnectionManage.setTcpConnection(socketID, tcpConnection);
+  call = (port: number) => (clientSocket: ProxySocket) => {
+    const tcpConnection = this.tcpConnectionManage.getTcpConnect(this.socketID) as TcpConnection;
+    
+    if (!tcpConnection || !this.socketID) {
+      return clientSocket.end();
+    }
+    tcpConnection.call(port)(clientSocket);
+  }
+}
 
-  tcpConnection.once('close', () => {
-    http.close(() => console.info('http close'));
-    https.close(() => console.info('https close'));
-  });
-});
+const client = new ListenerClient();
+const http = ProxyTcp.createTcpServer(CLIENT_TCP_HTTP_PORT, client.call(CLIENT_TCP_HTTP_PORT));
+const https = ProxyTcp.createTcpServer(443, client.call(443));

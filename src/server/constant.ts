@@ -1,6 +1,6 @@
 import { getIPv4Address, PLATFORM, LOCSLHOST_DNS } from './util/os-util';
 // 采用多核部署
-export const IS_CLUSER: boolean = PLATFORM !== 'win32';
+export const IS_CLUSER: boolean = false; //PLATFORM !== 'win32';
 // 本机地址
 export const LOCALHOST_ADDRESS = getIPv4Address();
 // 客户端 ip地址
@@ -26,7 +26,7 @@ export const PACKAGE_MAX_SIZE: number = 3500;
 // 客户端 dns 地址
 export const CN_DNS_ADDRESS = LOCSLHOST_DNS[0];
 // 服务端 dns 地址
-export const EN_DNS_ADDRESS = CN_DNS_ADDRESS;
+export const EN_DNS_ADDRESS = '10.248.33.31';
 
 // 进程通讯事件
 export const PROCESS_EVENT_TYPE = {

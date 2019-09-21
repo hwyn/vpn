@@ -29,9 +29,6 @@ export class ProxySocket extends ProxyEventEmitter {
     this.associatedListener(['end', 'close', 'connect'], true);
     this.mappingAttr(['localAddress', 'localPort']);
     this.socketEmit = this.socket.emit;
-    Object.defineProperty(this.socket, 'emit', {
-      get: () => (...arg: any[]) => this.proxyEmit.apply(this, arg)
-    });
   }
 
   private onInit() {
@@ -51,14 +48,6 @@ export class ProxySocket extends ProxyEventEmitter {
       this.on('data', (data: Buffer, next: Handler) => this.dilutePackage(data, next));
     }
     this.on('close', () => this.ended = true);
-  }
-
-  private proxyEmit(event: string, data: Buffer) {
-    if (ProxySocket.interceptEvents.includes(event)) {
-      this.socketEmit.call(this.socket, event, data);
-    } else {
-      this.socketEmit.call(this.socket, event, data);
-    }
   }
 
   private dilutePackage(data: Buffer, next: Handler) {

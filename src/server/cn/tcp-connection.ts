@@ -72,6 +72,9 @@ export class TcpConnection extends ProxyBasic {
 
   callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {
     const uid = uuid();
+    if (!this.eventCommunication) {
+      return clientSocket.end();
+    }
     console.log(`--------client connection ${ uid }----------`);
     this.eventCommunication.createLink(uid, port, data, (error: Error) => {
       if (error) {

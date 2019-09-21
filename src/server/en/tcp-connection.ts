@@ -62,19 +62,17 @@ export class TcpConnection extends ProxyBasic {
     
     this.socketMap.set(uid, clientSocket);
     proxyProcess.bindUid(uid);
-
     packageSeparation.once('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid, clientSocket));
     packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
     packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
     packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
-    
+
     clientSocket.on('data', packageManage.serverLinkCall());
     clientSocket.on('agent', packageManage.agentRequestCall());
     clientSocket.once('end', abnormalManage.endCall());
     clientSocket.once('close', abnormalManage.closeCall());
     clientSocket.once('error', abnormalManage.errorCall());
-
     abnormalManage.once('close', this.clientClose(uid));
   }
 

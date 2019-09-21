@@ -54,4 +54,8 @@ export class TcpConnectionManage extends UdpServerBasic {
       this.connection.delete(socketID);
     });
   }
+
+  public getTcpConnect(socketID: string) {
+    return this.connection.get(socketID);
+  }
 }
