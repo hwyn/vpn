@@ -110,7 +110,7 @@ export const setLocalhostDNS = async (ipv4: string, ipv6?: string) => {
       clientIPv6();
     };
   } else {
-    spawnPlatform(`networksetup -setdnsservers ${name} ${ipv6 || ipv4}`).unref();
+    spawnPlatform(`networksetup -setdnsservers ${name} ${ipv4}`).unref();
     return () => spawnPlatform(`networksetup -setdnsservers ${name} empty`, { detached: true, stdio: 'ignore' }).unref();
   }
 };

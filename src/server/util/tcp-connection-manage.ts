@@ -16,10 +16,11 @@ export class TcpConnectionManage extends UdpServerBasic {
     this.initProxyProcess();
   }
 
-  private getConnecction(data: Buffer) {
+  private async getConnecction(data: Buffer): Promise<any> {
     const { socketID, buffer } = this.unWriteSocketId(data);
     const tcpConnection = this.connection.get(socketID);
-    return { tcpConnection, buffer };
+    if (tcpConnection) return Promise.resolve({ tcpConnection, buffer });
+    else return Promise.reject('tcpConnection not defined');
   }
 
   protected udpMessage(data: Buffer) {
@@ -29,18 +30,21 @@ export class TcpConnectionManage extends UdpServerBasic {
   }
 
   protected switchMessage(data: Buffer) {
-    const { tcpConnection, buffer } = this.getConnecction(data);
-    this.emitAsync('message', tcpConnection, buffer);
+    this.getConnecction(data).then(({ tcpConnection, buffer }) => {
+      this.emitAsync('message', tcpConnection, buffer);
+    });
   }
 
   protected notExistUid(uid: string, data: Buffer): void {
-    const { tcpConnection, buffer } = this.getConnecction(data);
-    tcpConnection.notExistUid(uid, buffer);
+    this.getConnecction(data).then(({ tcpConnection, buffer }) => {
+      tcpConnection.notExistUid(uid, buffer);
+    });
   }
 
   protected stopClient(uid: string, data: Buffer): void {
-    const { tcpConnection } = this.getConnecction(data);
-    tcpConnection.stopClient(uid);
+    this.getConnecction(data).then(({ tcpConnection, buffer }) => {
+      tcpConnection.stopClient(uid);
+    });
   }
 
   public setTcpConnection(socketID: string, tcpConnection: ProxyBasic) {

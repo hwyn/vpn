@@ -13,7 +13,7 @@ export class PackageUtil {
   static PORT_BYTE_SIZE: 16 = 16;
   static UID_BYTE_SIZE: 8 = 8;
   static TYPE_BYTE_SIZE: 8 = 8;
-  static CURSOR_SIZE: 8 = 8;
+  static CURSOR_SIZE: 32 = 32;
   static PACKAGE_SIZE: 32 = 32;
 
   static bindUid(uid: string, buffer: Buffer) {
@@ -224,7 +224,7 @@ export class PackageSeparation extends EventEmitter {
 
   printLoseInfo(uid: string, cursor: number, type?: number) {
     if ([END, CLOSE, ERROR].includes(type) || this.maxPackageCount) {
-      if ([END, CLOSE, ERROR].includes(type)) {
+      if ([CLOSE].includes(type)) {
         this.maxPackageCount = cursor;
         this.lossPacketCount =  this.maxPackageCount - this.splitCursor - this.splitList.size + 1;
       } else {

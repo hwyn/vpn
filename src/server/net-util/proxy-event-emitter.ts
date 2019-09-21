@@ -29,4 +29,15 @@ export class ProxyEventEmitter extends EventEmitter {
       this[fnName] = (...arg: any[]) => this.source[fnName](...arg)
     );
   }
+
+  protected mappingAttr(attr: string | string[]): any {
+    if (Array.isArray(attr)) {
+      return (attr as string[]).forEach((att: string) => this.mappingAttr(att));
+    }
+
+    Object.defineProperty(this, attr, {
+      get: () => this.source[attr],
+      set: (val: any) => this.source[attr] = val,
+    });
+  }
 }

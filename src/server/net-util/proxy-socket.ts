@@ -27,6 +27,7 @@ export class ProxySocket extends ProxyEventEmitter {
     this.onInit();
     this.associatedListener(['data']);
     this.associatedListener(['end', 'close', 'connect'], true);
+    this.mappingAttr(['localAddress', 'localPort']);
     this.socketEmit = this.socket.emit;
     Object.defineProperty(this.socket, 'emit', {
       get: () => (...arg: any[]) => this.proxyEmit.apply(this, arg)
