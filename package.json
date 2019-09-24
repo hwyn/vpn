@@ -22,5 +22,8 @@
     "ts-tools": "git+https://github.com/HWuYing/ts-tools.git",
     "webpack": "~4.35.2",
     "express": "^4.16.4"
+  },
+  "dependencies": {
+    "raw-socket": "^1.7.0"
   }
 }
