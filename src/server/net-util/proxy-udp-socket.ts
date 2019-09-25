@@ -3,7 +3,6 @@
  */
 import { Socket, createSocket } from 'dgram';
 import {ProxyEventEmitter} from "./proxy-event-emitter";
-import { PackageUtil } from '../util';
 
 export const createSocketClient = (host: string, port: number): ProxyUdpSocket => {
   return new ProxyUdpSocket(host, port);
@@ -16,9 +15,8 @@ export class ProxyUdpSocket extends ProxyEventEmitter {
     this.associatedListener(['connect', 'error'], true);
   };
 
-  write(buffer: Buffer, uid?: string) {
-    const bindUidBuffer = PackageUtil.bindUid(uid, buffer);
-    this.socket.send(bindUidBuffer, this.port, this.host, (error: Error) => {
+  write(buffer: Buffer) {
+    this.socket.send(buffer, this.port, this.host, (error: Error) => {
       if (error) {
         this.emitAsync('error', error);
         this.socket.close();

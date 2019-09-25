@@ -75,9 +75,10 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * @param clientCursor
    * @param uid 
    */
-  private write(buffer: Buffer, clientCursor: number, uid?: string) {
+  private write(buffer: Buffer, clientCursor: number, uid: string) {
     const { cursor, data } = PackageUtil.packageSigout(buffer);
-    this.udpClientList[clientCursor].write(this.writeSocketID(this.socketID, buffer), uid);
+    const socketBuffer = this.writeSocketID(this.socketID, buffer);
+    this.udpClientList[clientCursor].write(PackageUtil.bindUid(uid, socketBuffer));
   }
 
   /**

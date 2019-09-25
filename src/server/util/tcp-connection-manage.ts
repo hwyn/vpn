@@ -18,7 +18,7 @@ export class TcpConnectionManage extends UdpServerBasic {
 
   private async getConnecction(data: Buffer): Promise<any> {
     const { socketID, buffer } = this.unWriteSocketId(data);
-    const tcpConnection = this.connection.get(socketID);
+    const tcpConnection = this.getTcpConnect(socketID);
     if (tcpConnection) return Promise.resolve({ tcpConnection, buffer });
     else return Promise.reject('tcpConnection not defined');
   }
@@ -30,9 +30,7 @@ export class TcpConnectionManage extends UdpServerBasic {
   }
 
   protected switchMessage(data: Buffer) {
-    this.getConnecction(data).then(({ tcpConnection, buffer }) => {
-      this.emitAsync('message', tcpConnection, buffer);
-    });
+    this.getConnecction(data).then(({ tcpConnection, buffer }) => this.emitAsync('message', tcpConnection, buffer));
   }
 
   protected notExistUid(uid: string, data: Buffer): void {
