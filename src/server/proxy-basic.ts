@@ -36,8 +36,8 @@ export abstract class ProxyBasic extends UdpServerBasic {
    */
   public stopClient(uid: string) {
     const clientTcp = this.socketMap.get(uid);
-    console.log(`-------stop-------${uid}------`);
     if (clientTcp) {
+      console.log(`-------stop-------${uid}------`);
       clientTcp.end();
     }
   }
