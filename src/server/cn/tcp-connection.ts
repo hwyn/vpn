@@ -41,7 +41,7 @@ export class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, UdpServerBasic.writeSocketID(this.socketID, data));
+      this.notExistUid(uid, buffer);
     }
   };
 

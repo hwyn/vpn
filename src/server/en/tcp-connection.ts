@@ -1,5 +1,5 @@
 import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventCommunication } from '../util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventCommunication, uuid } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
 import { 
@@ -46,12 +46,12 @@ export class TcpConnection extends ProxyBasic {
    * 接收到客户端提发送数据
    */
   public requestData = () => (buffer: Buffer) => {
-    const { uid, data, cursor } = PackageUtil.packageSigout(buffer);
+    const { uid } = PackageUtil.packageSigout(buffer);
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, UdpServerBasic.writeSocketID(this.socketID, data));
+      this.notExistUid(uid, buffer);
     }
   };
 

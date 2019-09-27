@@ -35,8 +35,4 @@ export abstract class UdpServerBasic extends EventEmitter {
   }
 
   protected abstract udpMessage(data: Buffer, next?: Handler): void;
-
-  protected abstract notExistUid(uid: string, buffer: Buffer): void;
-
-  protected abstract stopClient(uid: string,  buffer: Buffer): void;
 }

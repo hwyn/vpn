@@ -22,11 +22,11 @@ export const CLIENT_TCP_HTTPS_PORT: number = 443;
 // 服务端tcp 监听端口
 export const SERVER_TCP_PORT: number = 8000;
 // 数据包最大size
-export const PACKAGE_MAX_SIZE: number = 3500;
+export const PACKAGE_MAX_SIZE: number = 4500;
 // 客户端 dns 地址
-export const CN_DNS_ADDRESS = '10.248.33.31';
+export const CN_DNS_ADDRESS = '192.168.1.1';
 // 服务端 dns 地址
-export const EN_DNS_ADDRESS = '10.248.33.31';
+export const EN_DNS_ADDRESS = '192.168.1.1';
 
 // 进程通讯事件
 export const PROCESS_EVENT_TYPE = {

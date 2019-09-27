@@ -1,12 +1,7 @@
 import { createConnection, Socket } from 'net';
-import { PackageUtil } from '../util/package-separation';
 import { ProxyEventEmitter } from './proxy-event-emitter';
 import { Handler } from '../util/event-emitter';
-import { COMMUNICATION_EVENT } from '../constant';
-import { uuid } from '../util/tools';
-import { BufferUtil } from '../util/buffer-util';
-
-const { DATA } = COMMUNICATION_EVENT;
+import { PackageManage } from '../agreement/package-manage';
 
 export class ProxySocket extends ProxyEventEmitter {
   static pipeFns: string[] = ['destroy', 'address', 'close'];
@@ -15,11 +10,9 @@ export class ProxySocket extends ProxyEventEmitter {
     return new ProxySocket(createConnection({ host, port }), openPackage);
   };
   public ended: boolean = false;
-  private socketEmit: (event: string, data: Buffer) => void;
   private waitingWriteList: Buffer[] = [];
-  private uid: string = uuid();
   private connecting: boolean = true;
-  private cacheBuffer: Buffer = Buffer.alloc(0);
+  private manage: PackageManage;
   [x: string]: any;
 
   constructor(public socket: Socket, private openPackage?: boolean) {
@@ -28,10 +21,15 @@ export class ProxySocket extends ProxyEventEmitter {
     this.associatedListener(['data']);
     this.associatedListener(['end', 'close', 'connect'], true);
     this.mappingAttr(['localAddress', 'localPort']);
-    this.socketEmit = this.socket.emit;
+    if (openPackage) {
+      this.manage = new PackageManage();
+      this.manage.on('stick', this._write.bind(this));
+      this.manage.on('timeout', () => this.end());
+    }
   }
 
   private onInit() {
+    this.on('close', () => this.ended = true);
     this.on('connect', () => {
       this.connecting = false;
       this.waitingWriteList.forEach((buffer: Buffer) => this.write(buffer));
@@ -45,24 +43,19 @@ export class ProxySocket extends ProxyEventEmitter {
       this.emitAsync('error', error);
     });
     if (this.openPackage) {
-      this.on('data', (data: Buffer, next: Handler) => this.dilutePackage(data, next));
+      this.on('data', (data: Buffer, next: Handler) => this.manage.split(data, (_data: Buffer) => next(_data)));
     }
-    this.on('close', () => this.ended = true);
   }
 
-  private dilutePackage(data: Buffer, next: Handler) {
-    let cacheBuffer = BufferUtil.concat(this.cacheBuffer, data);
-    const size = PackageUtil.TYPE_BYTE_SIZE + PackageUtil.UID_BYTE_SIZE + PackageUtil.PACKAGE_SIZE;
-    let packageSize;
-    while (size < cacheBuffer.length) {
-      packageSize = PackageUtil.unpacking(cacheBuffer).packageSize;
-      if (packageSize > cacheBuffer.length) {
-        break;
-      }
-      next(PackageUtil.unpacking(cacheBuffer.slice(0, packageSize as number)).buffer);
-      cacheBuffer = cacheBuffer.slice(packageSize as number);
+  private _write(buffer: Buffer) {
+    if (this.ended) {
+      return ;
     }
-    this.cacheBuffer = cacheBuffer;
+    if (!this.socket.connecting) {
+      this.socket.write(buffer);
+    } else {
+      this.waitingWriteList.push(buffer);
+    }
   }
 
   pipe(proxySocket: ProxySocket | Socket) {
@@ -74,14 +67,7 @@ export class ProxySocket extends ProxyEventEmitter {
   }
 
   write(buffer: Buffer) {
-    if (this.ended) {
-      return ;
-    }
-    if (!this.socket.connecting) {
-      this.socket.write(this.openPackage ? PackageUtil.packing(DATA, this.uid, buffer) : buffer);
-    } else {
-      this.waitingWriteList.push(buffer);
-    }
+    this.openPackage ? this.manage.stick(buffer) : this._write(buffer);
   }
 
   end() {

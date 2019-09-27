@@ -89,10 +89,20 @@ export class PackageManage extends EventEmitter {
   private maxSize: number;
 
   private sendSt: any;
+  private timeout: number = 1000;
+  private clearTimeout: any;
   constructor(maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
+  }
+
+  private factoryTimout(uid?: string) {
+    let si = setTimeout(() => this.emitAsync('timeout'), this.timeout);
+    this.clearTimeout = () => {
+      clearTimeout(si);
+      this.clearTimeout = null;
+    }
   }
 
   private packing(data: Buffer) {
@@ -149,6 +159,9 @@ export class PackageManage extends EventEmitter {
       }
     });
     this.stickCacheBufferArray = remainingArray;
+    if (!this.sendSt) {
+      this.sendSt = setTimeout(() => this.directlySend());
+    }
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void) {
@@ -165,7 +178,7 @@ export class PackageManage extends EventEmitter {
     let splitArray: any = [];
     this.splitCacheBufferArray.forEach((item: any) => {
       const { data, currentCount, splitCount } = item;
-      splitArray.push(data);
+      splitArray.push(item);
       cacheArray.push(data);
       if (splitCount === currentCount) {
         const concatBufffer = BufferUtil.concat(...cacheArray);
@@ -176,9 +189,17 @@ export class PackageManage extends EventEmitter {
       }
     });
     this.splitCacheBufferArray = splitArray;
+
+    if (this.splitMap.size !== 0) {
+      !this.clearTimeout && this.factoryTimout();
+    } else {
+      this.clearTimeout && this.clearTimeout();
+    }
   }
 
   directlySend() {
     this.sendData(BufferUtil.concat(...this.stickCacheBufferArray));
+    this.stickCacheBufferArray = [];
+    this.sendSt = null;
   }
 }

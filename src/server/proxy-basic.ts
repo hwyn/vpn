@@ -48,12 +48,11 @@ export abstract class ProxyBasic extends UdpServerBasic {
    */
   protected initEventCommunication(eventCommunication: EventCommunication) {
     this.eventCommunication = eventCommunication;
-    this.eventCommunication.on('link-stop', (uid: string, buffer: Buffer) => proxyProcess.stopUidLinkMessage(uid, buffer));
+    this.eventCommunication.on('link-stop', (uid: string) => this.stopClient(uid));
     this.eventCommunication.on('error', (error: Error) => console.log(error));
     this.eventCommunication.on('close', () => {
       this.eventCommunication = null;
       this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.destroy());
-      // proxyProcess.deleteSocketId(this.socketID);
       this.emitAsync('close', this.socketID);
     });
   }
