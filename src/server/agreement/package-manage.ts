@@ -14,9 +14,9 @@ class PackageShard {
   constructor(private maxSize: number) {}
 
   private factorySplit(splitCount: number) {
-    let currentCount = 0;
+    let currentCount = 1;
     return (data: Buffer): Buffer => {
-      const title = BufferUtil.writeGrounUInt([currentCount, splitCount, data.length], [8, 8, LENGTH_SIZE]);
+      const title = BufferUtil.writeGrounUInt([currentCount++, splitCount, data.length], [8, 8, LENGTH_SIZE]);
       return BufferUtil.concat(title, data);
     };
   }
@@ -27,12 +27,13 @@ class PackageShard {
     const split = (data: Buffer) => {
       const [ title ] = BufferUtil.unConcat(data, [titleLength]);
       const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, LENGTH_SIZE]);
-      const packageBuffer = data.slice(titleLength, length as number - titleLength);
+      const packageSize = titleLength + (length as number);
+      const packageBuffer = data.slice(titleLength, packageSize);
       return { 
         data: packageBuffer,
         currentCount: currentCount as number,
         splitCount: splitCount as number, 
-        packageSize: titleLength + (length as number)
+        packageSize
       };
     };
     return () => {
@@ -42,6 +43,7 @@ class PackageShard {
         remainingBuffer = remainingBuffer.slice(obj.packageSize);
         splitArray.push(obj);
       }
+      return splitArray;
     };
   }
 
@@ -54,7 +56,7 @@ class PackageShard {
       let splitData = data;
       dataArray = [];
       splitCount = (dataLength - l) / this.maxSize + (l === 0 ? 0 : 1);
-      while(splitData.length) {
+      while(splitData.length > 0) {
         dataArray.push(splitData.slice(0, this.maxSize));
         splitData = splitData.slice(this.maxSize);
       }
@@ -72,7 +74,7 @@ class PackageShard {
  *  serialSize | lengthSize | serial | length | data
  * -------------------------------------------------
  */
-class PackageManage extends EventEmitter {
+export class PackageManage extends EventEmitter {
   private stickSerial: number = 0;
   private splitSerial: number = 0;
   private stickCacheBufferArray: Buffer[] = [];
@@ -85,6 +87,7 @@ class PackageManage extends EventEmitter {
   constructor(private maxSize: number) {
     super();
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
+    this.on('stick', this.split.bind(this));
   }
 
   private packing(data: Buffer) {
@@ -104,9 +107,15 @@ class PackageManage extends EventEmitter {
     return { serial, packageSize: packageSize as number, packageBuffer, data };
   }
 
+  private sendData(data: Buffer) {
+    const sendDate = this.packing(data);
+    this.emitSync('stick', sendDate);
+    this.stickSerial++;
+  }
+
   stick(data: Buffer) {
     let sendDate = Buffer.alloc(0);
-    const remainingArray = [];
+    const remainingArray: any[] | Buffer[] = [];
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
       this.shard.splitData(data)
@@ -114,10 +123,8 @@ class PackageManage extends EventEmitter {
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
       if (sendDate.length >= this.maxSize) {
-        sendDate = this.packing(sendDate);
-        this.emitSync('stick', sendDate);
+        this.sendData(sendDate);
         remainingArray.splice(0, remainingArray.length);
-        this.stickSerial++;
       } else {
         remainingArray.push(buffer);
       }
@@ -131,7 +138,7 @@ class PackageManage extends EventEmitter {
     if (packageBuffer.length < packageSize) {
       return ;
     }
-    this.splitCacheBuffer = splitBuffer.slice(0, packageSize);
+    this.splitCacheBuffer = splitBuffer.slice(packageSize);
     this.splitMap.set(serial, data);
 
     while(this.splitMap.has(this.splitSerial)) {
@@ -142,6 +149,22 @@ class PackageManage extends EventEmitter {
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
     }
-    console.log(this.splitCacheBufferArray);
+
+    let cacheArray: any = [];
+    let splitArray = [];
+    this.splitCacheBufferArray.forEach((item: any) => {
+      const { data, currentCount, splitCount } = item;
+      splitArray.push(data);
+      cacheArray.push(data);
+      if (splitCount === currentCount) {
+        this.emitAsync('split', BufferUtil.concat(...cacheArray));
+        cacheArray = [];
+        splitArray = [];
+      }
+    });
+  }
+
+  directlySend() {
+    this.sendData(BufferUtil.concat(...this.stickCacheBufferArray));
   }
 }

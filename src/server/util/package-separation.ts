@@ -4,6 +4,7 @@
 import { EventEmitter, Handler} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
+import { PackageManage } from '../agreement/package-manage';
 
 const { END, CLOSE, ERROR } = COMMUNICATION_EVENT;
 
@@ -93,6 +94,7 @@ export class PackageUtil {
 }
 
 export class PackageSeparation extends EventEmitter {
+  private manage = new PackageManage(PACKAGE_MAX_SIZE);
   private timeout: number = 1000;
   private clearTimeout: () => void | null;
   private _mergeCursor: number = 0;
