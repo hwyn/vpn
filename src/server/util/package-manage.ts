@@ -21,7 +21,7 @@ export class PackageManage {
   };
 }
 
-export class BrowserManage extends PackageManage{
+export class BrowserManage extends PackageManage {
   constructor(uid: string, packageSeparation: PackageSeparation) {
     super(uid, packageSeparation,  'client');
   }

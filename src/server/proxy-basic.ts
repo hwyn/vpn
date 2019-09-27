@@ -4,7 +4,7 @@
 import { ProxyUdpServer  } from './net-util/proxy-udp';
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
 import { ProxySocket, proxyProcess } from './net-util';
-import { PackageUtil, EventCommunication } from './util';
+import { PackageUtil, EventCommunication, BufferUtil } from './util';
 import { UdpServerBasic } from './udp-server-basic';
 
 export abstract class ProxyBasic extends UdpServerBasic {
@@ -16,6 +16,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
   private _cursor: number = 0;
   constructor(protected socketID: string, private serverName: string) {
     super();
+    // proxyProcess.bindSocketId(this.socketID);
   }
 
 
@@ -52,6 +53,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
     this.eventCommunication.on('close', () => {
       this.eventCommunication = null;
       this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.destroy());
+      // proxyProcess.deleteSocketId(this.socketID);
       this.emitAsync('close', this.socketID);
     });
   }
@@ -76,9 +78,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * @param uid 
    */
   private write(buffer: Buffer, clientCursor: number, uid: string) {
-    const { cursor, data } = PackageUtil.packageSigout(buffer);
-    const socketBuffer = this.writeSocketID(this.socketID, buffer);
-    this.udpClientList[clientCursor].write(PackageUtil.bindUid(uid, socketBuffer));
+    this.udpClientList[clientCursor].write(UdpServerBasic.writeSocketID(this.socketID, buffer));
   }
 
   /**
@@ -102,7 +102,6 @@ export abstract class ProxyBasic extends UdpServerBasic {
   protected clientClose(uid: string) {
     return () => {
       this.socketMap.delete(uid);
-      proxyProcess.deleteUid(uid);
       console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
     }
   }

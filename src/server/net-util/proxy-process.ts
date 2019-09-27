@@ -2,7 +2,7 @@ import { ProxyEventEmitter } from "./proxy-event-emitter";
 import { PROCESS_EVENT_TYPE, IS_CLUSER } from '../constant';
 import { PackageUtil, uuid } from '../util';
 
-const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, NOT_SOCKETID_PROCESS, DELETE_SOCKETID, BIND_SOCKETID, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 
 class ProxyProcess extends ProxyEventEmitter {
@@ -11,22 +11,21 @@ class ProxyProcess extends ProxyEventEmitter {
     this.onInit();
   }
 
-  bindUid(uid: string) {
-    this.send({ event: BIND_UID, data: uid });
+  bindSocketId(uid: string) {
+    this.send({ event: BIND_SOCKETID, data: uid });
   }
 
-  deleteUid(uid: string) {
-    this.send({ event: DELETE_UID, data: uid });
+  deleteSocketId(uid: string) {
+    this.send({ event: DELETE_SOCKETID, data: uid });
   }
 
   /**
    * 接收到客户端到消息
    * @param buffer
    */
-  requestMessage(buffer: Buffer) {
-    this.send({ event: UDP_REQUEST_MESSAGE, data: buffer });
+  requestMessage(data: Buffer) {
+    this.send({ event: UDP_REQUEST_MESSAGE, data });
     if (!IS_CLUSER) {
-      const { buffer: data } = PackageUtil.getUid(buffer);
       this.udpRequestMessage({ data });
     }
   }
@@ -38,8 +37,7 @@ class ProxyProcess extends ProxyEventEmitter {
   responseMessage(buffer: Buffer) {
     this.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
     if (!IS_CLUSER) {
-      const { buffer: data } = PackageUtil.getUid(buffer);
-      this.udpResponseMessage({ data }); 
+      this.udpResponseMessage({ data: buffer }); 
     }
   }
 
@@ -62,6 +60,12 @@ class ProxyProcess extends ProxyEventEmitter {
     this.emitAsync(NOT_UID_PROCESS, uid, Buffer.from(buffer.data));
   }
 
+  private notSocketProcess({ data }: any) {
+    const buffer = Buffer.from(data);
+    const { uid, data: _data } = PackageUtil.packageSigout(buffer);
+    this.notUidProcess({ uid, buffer: _data});
+  }
+
   private storUidLink({ uid, buffer }: any) {
     this.emitAsync(STOU_UID_LINK, uid, Buffer.from(buffer.data));
   }
@@ -78,6 +82,7 @@ class ProxyProcess extends ProxyEventEmitter {
     switch(event) {
       case UDP_RESPONSE_MESSAGE: this.udpResponseMessage(data); break;
       case UDP_REQUEST_MESSAGE: this.udpRequestMessage(data); break;
+      case NOT_SOCKETID_PROCESS: this.notSocketProcess(data); break;
       case NOT_UID_PROCESS: this.notUidProcess(data); break;
       case STOU_UID_LINK: this.storUidLink(data); break;
     }

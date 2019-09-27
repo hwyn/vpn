@@ -1,12 +1,14 @@
 import { Server, createServer, Socket } from 'net';
 import { ProxyEventEmitter } from './proxy-event-emitter';
 import { ProxySocket } from './proxy-socket';
+import { PackageManage } from '../agreement/package-manage';
 
 export class ProxyTcp extends ProxyEventEmitter {
   static createTcpServer = (port: number, connectListener: (socket: ProxySocket) => void, openPackage?: boolean) => {
     return new ProxyTcp(port, connectListener, openPackage);
   };
-
+  
+  private manage: PackageManage;
   private tcpServer: Server = this.source as Server;
   [x: string]: any;
 

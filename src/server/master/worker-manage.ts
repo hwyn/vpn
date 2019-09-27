@@ -1,8 +1,9 @@
 import cluster from 'cluster';
 import { EventEmitter, PackageUtil } from '../util';
 import { PROCESS_EVENT_TYPE } from '../constant';
+import { UdpServerBasic } from '../udp-server-basic';
 
-const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_UID, BIND_UID, NOT_UID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_SOCKETID, BIND_SOCKETID, NOT_SOCKETID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
 
 export class WorkerManage extends EventEmitter {
   private uidSet: Set<string> = new Set();
@@ -21,7 +22,6 @@ export class WorkerManage extends EventEmitter {
 
   private distributionResponseWorker(event: any) {
     const { runWorker, buffer } = this.distributionWorker(event);
-    const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
       runWorker.send({ event: UDP_RESPONSE_MESSAGE, data: buffer });
     }
@@ -29,7 +29,6 @@ export class WorkerManage extends EventEmitter {
 
   private distributionRequestWorker(event: any) {
     const { runWorker, buffer } = this.distributionWorker(event);
-    const { uid, cursor } = PackageUtil.packageSigout(buffer);
     if (runWorker) {
       runWorker.send({ event: UDP_REQUEST_MESSAGE, data: buffer });
     }
@@ -43,16 +42,13 @@ export class WorkerManage extends EventEmitter {
   }
 
   private distributionWorker({ data }: any) {
-    const { uid, buffer } = PackageUtil.getUid(Buffer.from(data));
-    const { cursor } = PackageUtil.packageSigout(buffer);
-    const runWorker = manageList.getWorker(uid);
+    const dateBuffer = Buffer.from(data);
+    const { socketID } = UdpServerBasic.unWriteSocketId(dateBuffer);
+    const runWorker = manageList.getWorker(socketID);
     if (!runWorker) {
-      this.send({ event: NOT_UID_PROCESS, data: {
-         uid,
-         buffer: buffer
-      }});
+      this.send({ event: NOT_SOCKETID_PROCESS, data: dateBuffer});
     }
-    return { runWorker, buffer };
+    return { runWorker, buffer: dateBuffer };
   }
 
   private onInit() {
@@ -62,20 +58,20 @@ export class WorkerManage extends EventEmitter {
 
   eventBus({ event, data }: any) {
     switch(event) {
-      case BIND_UID: this.bindUid(data); break;
-      case DELETE_UID: this.deleteUid(data); break;
+      case BIND_SOCKETID: this.bindSocketId(data); break;
+      case DELETE_SOCKETID: this.deleteSocketId(data); break;
       case UDP_REQUEST_MESSAGE: this.distributionRequestWorker(data);break;
       case UDP_RESPONSE_MESSAGE: this.distributionResponseWorker(data);break;
       case STOU_UID_LINK: this.distributionStopUidLinkWorker(data); break;
     }
   }
 
-  private deleteUid(uid: string) {
-    this.uidSet.delete(uid);
+  private deleteSocketId(socketId: string) {
+    this.uidSet.delete(socketId);
   }
 
-  private bindUid(uid: string) {
-    this.uidSet.add(uid);
+  private bindSocketId(socketId: string) {
+    this.uidSet.add(socketId);
   }
 }
 

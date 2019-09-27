@@ -4,7 +4,6 @@
 import { EventEmitter, Handler} from './event-emitter';
 import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
-import { PackageManage } from '../agreement/package-manage';
 
 const { END, CLOSE, ERROR } = COMMUNICATION_EVENT;
 
@@ -16,33 +15,6 @@ export class PackageUtil {
   static TYPE_BYTE_SIZE: 8 = 8;
   static CURSOR_SIZE: 32 = 32;
   static PACKAGE_SIZE: 32 = 32;
-
-  static bindUid(uid: string, buffer: Buffer) {
-    const { UID_BYTE_SIZE } = PackageUtil;
-    const title = BufferUtil.writeGrounUInt([uid.length], [UID_BYTE_SIZE]);
-    return BufferUtil.concat(title, uid, buffer);
-  }
-
-  static getUid(buffer: Buffer): { uid: string, buffer: Buffer} {
-    const { UID_BYTE_SIZE } = PackageUtil;
-    const [uidLength] = BufferUtil.readGroupUInt(buffer, [UID_BYTE_SIZE]);
-    const [ uid, packageBuf ] = BufferUtil.unConcat(buffer, [uidLength], UID_BYTE_SIZE);
-    return { uid: uid.toString(), buffer: packageBuf };
-  }
-
-  static bindPort(port: number, buffer: Buffer): Buffer {
-    const { PORT_BYTE_SIZE } = PackageUtil;
-    return BufferUtil.concat(BufferUtil.writeGrounUInt([port], [PORT_BYTE_SIZE]), buffer);
-  }
-
-  static getPort(buffer: Buffer): { port: number, buffer: Buffer} {
-    const { PORT_BYTE_SIZE } = PackageUtil;
-    const [ portBuffer, data ] = BufferUtil.unConcat(buffer, [PORT_BYTE_SIZE]);
-    return {
-      port: portBuffer.readUInt16BE(0),
-      buffer: data
-    };
-  }
 
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
     const { UID_BYTE_SIZE, TYPE_BYTE_SIZE, PACKAGE_SIZE } = PackageUtil;
@@ -94,7 +66,6 @@ export class PackageUtil {
 }
 
 export class PackageSeparation extends EventEmitter {
-  private manage = new PackageManage(PACKAGE_MAX_SIZE);
   private timeout: number = 1000;
   private clearTimeout: () => void | null;
   private _mergeCursor: number = 0;

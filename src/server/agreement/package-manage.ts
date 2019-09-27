@@ -1,9 +1,9 @@
 import { EventEmitter } from '../util/event-emitter';
 import { BufferUtil } from '../util/buffer-util';
+import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
 
 const SERIAL_SIZE = 8;
 const LENGTH_SIZE = 32;
-const MAX_PACKAGE_SIZE: number = Math.pow(2, 16);
 
 /**
  * ----------------------------------------
@@ -84,10 +84,13 @@ export class PackageManage extends EventEmitter {
   private splitCacheBufferArray: Buffer[] = [];
   private shard: PackageShard;
   private titleSize = SERIAL_SIZE + LENGTH_SIZE;
-  constructor(private maxSize: number) {
+  private maxSize: number;
+
+  private sendSt: any;
+  constructor(maxSize?: number) {
     super();
+    this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
-    this.on('stick', this.split.bind(this));
   }
 
   private packing(data: Buffer) {
@@ -109,8 +112,22 @@ export class PackageManage extends EventEmitter {
 
   private sendData(data: Buffer) {
     const sendDate = this.packing(data);
-    this.emitSync('stick', sendDate);
+    this.emitAsync('stick', sendDate);
     this.stickSerial++;
+  }
+
+  private splitMerge() {
+    let splitBuffer = this.splitCacheBuffer;
+    const size = SERIAL_SIZE + LENGTH_SIZE;
+    while (splitBuffer.length > size) {
+      const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
+      if (packageSize > packageBuffer.length) {
+        break;
+      }
+      this.splitMap.set(serial, data);
+      splitBuffer = splitBuffer.slice(packageSize);
+    }
+    this.splitCacheBuffer = splitBuffer;
   }
 
   stick(data: Buffer) {
@@ -132,15 +149,9 @@ export class PackageManage extends EventEmitter {
     this.stickCacheBufferArray = remainingArray;
   }
 
-  split(buffer: Buffer) {
-    const splitBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
-    const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
-    if (packageBuffer.length < packageSize) {
-      return ;
-    }
-    this.splitCacheBuffer = splitBuffer.slice(packageSize);
-    this.splitMap.set(serial, data);
-
+  split(buffer: Buffer, callback?: (data: Buffer) => void) {
+    this.splitCacheBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
+    this.splitMerge();
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
         this.splitCacheBufferArray, 
@@ -149,19 +160,21 @@ export class PackageManage extends EventEmitter {
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
     }
-
     let cacheArray: any = [];
-    let splitArray = [];
+    let splitArray: any = [];
     this.splitCacheBufferArray.forEach((item: any) => {
       const { data, currentCount, splitCount } = item;
       splitArray.push(data);
       cacheArray.push(data);
       if (splitCount === currentCount) {
-        this.emitAsync('split', BufferUtil.concat(...cacheArray));
+        const concatBufffer = BufferUtil.concat(...cacheArray);
+        callback ? callback(concatBufffer) : null;
+        this.emitAsync('split', concatBufffer);
         cacheArray = [];
         splitArray = [];
       }
     });
+    this.splitCacheBufferArray = splitArray;
   }
 
   directlySend() {

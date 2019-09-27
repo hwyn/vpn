@@ -5,6 +5,7 @@ import {
   SERVER_IP,
   PROCESS_EVENT_TYPE,
 } from '../constant';
+import { UdpServerBasic } from '../udp-server-basic';
 
 const { NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
@@ -40,7 +41,7 @@ export class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, this.writeSocketID(this.socketID, data));
+      proxyProcess.emitAsync(NOT_UID_PROCESS, uid, UdpServerBasic.writeSocketID(this.socketID, data));
     }
   };
 
@@ -51,7 +52,6 @@ export class TcpConnection extends ProxyBasic {
     const eventCommunication = this.eventCommunication;
 
     this.socketMap.set(uid, clientSocket);
-    proxyProcess.bindUid(uid);
 
     packageSeparation.once('timeout', () => clientSocket.end());
     packageSeparation.on('sendData', this.send(uid, clientSocket));

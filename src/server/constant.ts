@@ -1,6 +1,6 @@
 import { getIPv4Address, PLATFORM, LOCSLHOST_DNS } from './util/os-util';
 // 采用多核部署
-export const IS_CLUSER: boolean = false; //PLATFORM !== 'win32';
+export const IS_CLUSER: boolean = PLATFORM !== 'win32';
 // 本机地址
 export const LOCALHOST_ADDRESS = getIPv4Address();
 // 客户端 ip地址
@@ -32,9 +32,10 @@ export const EN_DNS_ADDRESS = '10.248.33.31';
 export const PROCESS_EVENT_TYPE = {
   UDP_RESPONSE_MESSAGE: 'udp-response-message',
   UDP_REQUEST_MESSAGE: 'udp-request-message',
-  DELETE_UID: 'delete-uid',
-  BIND_UID: 'bind-uid',
+  DELETE_SOCKETID: 'delete-socket-id',
+  BIND_SOCKETID: 'bind-socket-id',
   NOT_UID_PROCESS: 'not-uid-process',
+  NOT_SOCKETID_PROCESS: 'not-socket-process',
   STOU_UID_LINK: 'stor-uid-link',
 };
 
