@@ -24,15 +24,15 @@ class PackageShard {
   private factoryUnSplit(buffer: Buffer) {
     let remainingBuffer = buffer;
     const titleLength = 8 + 8 + LENGTH_SIZE;
-    const split = (data: Buffer) => {
-      const [ title ] = BufferUtil.unConcat(data, [titleLength]);
-      const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, LENGTH_SIZE]);
-      const packageSize = titleLength + (length as number);
-      const packageBuffer = data.slice(titleLength, packageSize);
+    const split = (_buffer: Buffer) => {
+      const [ title ] = BufferUtil.unConcat(_buffer, [titleLength]);
+      const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, LENGTH_SIZE]) as number[];
+      const packageSize = titleLength + length;
+      const packageBuffer = _buffer.slice(titleLength, packageSize);
       return { 
         data: packageBuffer,
-        currentCount: currentCount as number,
-        splitCount: splitCount as number, 
+        currentCount: currentCount,
+        splitCount: splitCount, 
         packageSize
       };
     };
@@ -41,7 +41,9 @@ class PackageShard {
       while(remainingBuffer.length > 0) {
         const obj = split(remainingBuffer);
         remainingBuffer = remainingBuffer.slice(obj.packageSize);
-        splitArray.push(obj);
+        if (obj.data.length > 0) {
+          splitArray.push(obj);
+        }
       }
       return splitArray;
     };
@@ -102,12 +104,12 @@ export class PackageManage extends EventEmitter {
 
   private unpacking(buffer: Buffer): { serial: number, packageSize: number, packageBuffer: Buffer, data: Buffer } {
     const title = buffer.slice(0, this.titleSize);
-    const [ serialSize, packageSize ] = BufferUtil.readGroupUInt(title, [SERIAL_SIZE, LENGTH_SIZE]);
+    const [ serialSize, packageSize ] = BufferUtil.readGroupUInt(title, [SERIAL_SIZE, LENGTH_SIZE]) as number[];
     const unConcat = BufferUtil.unConcat(buffer, [ this.titleSize, serialSize ]);
     const serial = parseInt(unConcat[1].toString());
-    const packageBuffer = buffer.slice(0, packageSize as number);
-    const data = packageBuffer.slice(this.titleSize + (serialSize as number));
-    return { serial, packageSize: packageSize as number, packageBuffer, data };
+    const packageBuffer = buffer.slice(0, packageSize);
+    const data = packageBuffer.slice(this.titleSize + serialSize);
+    return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
   private sendData(data: Buffer) {
@@ -116,8 +118,8 @@ export class PackageManage extends EventEmitter {
     this.stickSerial++;
   }
 
-  private splitMerge() {
-    let splitBuffer = this.splitCacheBuffer;
+  private splitMerge(buffer: Buffer) {
+    let splitBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
     const size = SERIAL_SIZE + LENGTH_SIZE;
     while (splitBuffer.length > size) {
       const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
@@ -150,8 +152,7 @@ export class PackageManage extends EventEmitter {
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void) {
-    this.splitCacheBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
-    this.splitMerge();
+    this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
         this.splitCacheBufferArray, 
