@@ -23,7 +23,6 @@ export class PackageManage {
 }
 
 export class BrowserManage extends PackageManage {
-  private manage = new AManage();
   constructor(uid: string, packageSeparation: PackageSeparation) {
     super(uid, packageSeparation,  'client');
   }

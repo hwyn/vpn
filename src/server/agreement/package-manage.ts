@@ -193,6 +193,7 @@ export class PackageManage extends EventEmitter {
       sendDate = BufferUtil.concat(sendDate, buffer);
       if (sendDate.length >= this.maxSize) {
         this.send(sendDate);
+        sendDate = Buffer.alloc(0);
         remainingArray.splice(0, remainingArray.length);
       } else {
         remainingArray.push(buffer);
@@ -207,10 +208,9 @@ export class PackageManage extends EventEmitter {
   split(buffer: Buffer, callback?: (data: Buffer) => void) {
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
-      const { type, data } = this.readPackageType(this.splitMap.get(this.splitSerial));
       this.splitCacheBufferArray = [].concat(
         this.splitCacheBufferArray, 
-        this.shard.unSplitData(data)
+        this.shard.unSplitData(this.splitMap.get(this.splitSerial))
       );
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
@@ -222,7 +222,7 @@ export class PackageManage extends EventEmitter {
       splitArray.push(item);
       cacheArray.push(data);
       if (splitCount === currentCount) {
-        const concatBufffer = BufferUtil.concat(...cacheArray);
+        const { type, data: concatBufffer } = this.readPackageType(BufferUtil.concat(...cacheArray));
         callback ? callback(concatBufffer) : null;
         this.emitAsync('data', concatBufffer);
         cacheArray = [];
