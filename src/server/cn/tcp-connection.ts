@@ -37,12 +37,24 @@ export class TcpConnection extends ProxyBasic {
 
     this.socketMap.set(uid, clientSocket);
     
-    packageManage.on('timeout', () => clientSocket.end());
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
-    packageManage.once('end', () => clientSocket.end());
-    packageManage.once('error', () => clientSocket.end());
+    packageManage.once('end', () => {
+      console.log(`--message end ${uid}--`);
+      clientSocket.end();
+    });
+    packageManage.once('error', () => {
+      console.log(`--message error ${uid}--`);
+      clientSocket.end();
+    });
+    packageManage.once('timeout', () => {
+      console.log(`--message timeout ${uid}--`);
+      clientSocket.end();
+    });
+    packageManage.once('close', () => {
+      console.log(`--message close ${uid}--`);
+    });
     packageManage.once('close', this.clientClose(uid));
 
     packageManage.on('sendEnd', (endData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, endData)]));
@@ -51,9 +63,9 @@ export class TcpConnection extends ProxyBasic {
 
     clientSocket.on('data', (data: Buffer) => packageManage.write(data));
     clientSocket.on('agent', (data: Buffer) => packageManage.distribute(data));
-    clientSocket.on('end', () => packageManage.end());
-    clientSocket.on('close', () => packageManage.close());
-    clientSocket.on('error', () => packageManage.error());
+    clientSocket.on('end', () => packageManage.end(uid));
+    clientSocket.on('close', () => packageManage.close(uid));
+    clientSocket.on('error', (error: Error) => packageManage.error(uid, error));
     packageManage.write(data);
   };
 

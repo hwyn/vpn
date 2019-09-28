@@ -102,13 +102,14 @@ export class PackageManage extends EventEmitter {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
+    this.once('_close', () => this.emitAsync('close'));
   }
 
-  private factoryTimout(uid?: string) {
+  private factoryTimout() {
     let si = setTimeout(() => this.emitAsync('timeout'), this.timeout);
     this.clearTimeout = () => {
-      clearTimeout(si);
       this.clearTimeout = null;
+      clearTimeout(si);
     }
   }
 
@@ -144,6 +145,7 @@ export class PackageManage extends EventEmitter {
     const serialBuffer = BufferUtil.concat(this.stickSerial.toString());
     const length = this.titleSize + serialBuffer.length + data.length;
     const titleBuffer = BufferUtil.writeGrounUInt([serialBuffer.length, length], [SERIAL_SIZE, LENGTH_SIZE]);
+    this.stickSerial++;
     return BufferUtil.concat(titleBuffer, serialBuffer, data);
   }
 
@@ -164,16 +166,16 @@ export class PackageManage extends EventEmitter {
   private eventSwitch(type: number) {
     this.isNotEnd = false;
     switch(type) {
-      case END: this.end(); this.emitAsync('end'); break;
-      case CLOSE: this.close(); this.emitAsync('close'); break;
-      case ERROR: this.error(); this.emitAsync('error'); break;
+      case CLOSE: this.emitAsync('_close'); break;
+      case END: this.emitAsync('end'); break;
+      case ERROR: this.emitAsync('error'); break;
     }
   }
 
   private send(data: Buffer) {
     const sendDate = this.packing(data);
     this.emitAsync('send', sendDate);
-    this.stickSerial++;
+    
   }
 
   private splitMerge(buffer: Buffer) {
@@ -196,8 +198,10 @@ export class PackageManage extends EventEmitter {
   }
   
   private directly() {
-    this.send(BufferUtil.concat(...this.stickCacheBufferArray));
-    this.stickCacheBufferArray = [];
+    if (this.stickCacheBufferArray.length) {
+      this.send(BufferUtil.concat(...this.stickCacheBufferArray));
+      this.stickCacheBufferArray = [];
+    }
     this.sendSt = null;
   }
 
@@ -237,6 +241,13 @@ export class PackageManage extends EventEmitter {
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
     }
+
+    if (this.splitMap.size !== 0 && !this.clearTimeout) {
+      this.factoryTimout();
+    } else if (this.splitMap.size === 0 && this.clearTimeout) {
+      this.clearTimeout();
+    }
+
     let cacheArray: any = [];
     let splitArray: any = [];
     this.splitCacheBufferArray.forEach((item: any) => {
@@ -257,32 +268,27 @@ export class PackageManage extends EventEmitter {
     });
     this.splitCacheBufferArray = splitArray;
 
-    if (this.splitMap.size !== 0) {
-      !this.clearTimeout && this.factoryTimout();
-    } else {
-      this.clearTimeout && this.clearTimeout();
-    }
   }
 
   end() {
-    this.endable  = true;
-    this.directly();
     if (this.isNotEnd) {
+      this.directly();
       this.emitAsync('sendEnd', this.getEventBuffer(END));
     }
   }
 
   close() {
+    this.endable = true;
     if (this.isNotEnd) {
       this.emitAsync('sendClose', this.getEventBuffer(CLOSE));
     }
-    this.emitAsync('close');
+    this.emitAsync('_close');
   }
-
-  error() {
+  // message close 7cd83a9d-adb1-44c3-b52e-f4cc5e8fb4c4
+  error(error: Error) {
     this.endable  = true;
-    this.directly();
     if (this.isNotEnd) {
+      this.directly();
       this.emitAsync('sendError', this.getEventBuffer(ERROR));
     }
   }

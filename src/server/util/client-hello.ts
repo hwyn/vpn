@@ -81,11 +81,12 @@ export const getHttpsClientHello = (() => {
     const { header, body } = formatHeader(buffer);
     const format = formatBody(body);
     format.extensions.list = formatExtension(format.extensions.buffer);
-    const serverExtension = formatServerExtension(format.extensions.list.filter(({ type }: any) => type === 0)[0]);
+    const serverExtension = format.extensions.list.filter(({ type }: any) => type === 0)[0];
+    const server = serverExtension ? formatServerExtension(serverExtension) : { host: '127.0.0.1' };
 
     return {
       header,
-      host: serverExtension.host
+      host: server.host
     };
   }
 })();

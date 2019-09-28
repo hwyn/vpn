@@ -34,15 +34,18 @@ export class PackageManage extends EventEmitter {
     this.manage.stick(data);
   }
 
-  end() {
+  end(uid: string) {
+    console.log(`-----------------end--${uid}---------------`);
     this.manage.end();
   }
 
-  close() {
+  close(uid: string) {
+    console.log(`-----------------close--${uid}---------------`);
     this.manage.close();
   }
 
-  error() {
-    this.manage.error();
+  error(uid: string, error: Error) {
+    console.log(`uid------->${uid}`, error);
+    this.manage.error(error);
   }
 }
