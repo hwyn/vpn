@@ -1,14 +1,8 @@
-import { ProxySocket, ProxyTcp, proxyProcess } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventCommunication, uuid } from '../util';
+import { ProxySocket } from '../net-util';
+import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
-import { 
-  PROCESS_EVENT_TYPE,
-  LOCALHOST_ADDRESS
-} from '../constant';
-import { UdpServerBasic } from '../udp-server-basic';
-
-const { NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
+import { LOCALHOST_ADDRESS } from '../constant';
 
 export class TcpConnection extends ProxyBasic {
   constructor(socketID: string) {

@@ -3,7 +3,7 @@
  */
 import { ProxyUdpServer  } from './net-util/proxy-udp';
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
-import { ProxySocket, proxyProcess } from './net-util';
+import { ProxySocket } from './net-util';
 import { PackageUtil, EventCommunication, BufferUtil } from './util';
 import { UdpServerBasic } from './udp-server-basic';
 
@@ -16,7 +16,6 @@ export abstract class ProxyBasic extends UdpServerBasic {
   private _cursor: number = 0;
   constructor(protected socketID: string, private serverName: string) {
     super();
-    // proxyProcess.bindSocketId(this.socketID);
   }
 
 

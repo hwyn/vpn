@@ -1,13 +1,8 @@
-import { ProxySocket, proxyProcess } from '../net-util';
+import { ProxySocket } from '../net-util';
 import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
-import { 
-  SERVER_IP,
-  PROCESS_EVENT_TYPE,
-} from '../constant';
-import { UdpServerBasic } from '../udp-server-basic';
+import {  SERVER_IP } from '../constant';
 
-const { NOT_UID_PROCESS } = PROCESS_EVENT_TYPE;
 
 export class TcpConnection extends ProxyBasic {
   constructor(socketID: string) {
@@ -22,14 +17,6 @@ export class TcpConnection extends ProxyBasic {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link-info', this.responseData());
   }
-
-  /**
-   * 发送事件到服务端
-   */
-  protected requestEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
-    const { uid } = PackageUtil.packageSigout(buffer[0]);
-    tcpEvent.write(buffer[0]);
-  };
 
   /**
    * 接收到服务端响应数据
