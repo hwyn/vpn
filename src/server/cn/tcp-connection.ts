@@ -40,21 +40,9 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
-    packageManage.once('end', () => {
-      console.log(`--message end ${uid}--`);
-      clientSocket.end();
-    });
-    packageManage.once('error', () => {
-      console.log(`--message error ${uid}--`);
-      clientSocket.end();
-    });
-    packageManage.once('timeout', () => {
-      console.log(`--message timeout ${uid}--`);
-      clientSocket.end();
-    });
-    packageManage.once('close', () => {
-      console.log(`--message close ${uid}--`);
-    });
+    packageManage.once('end', () =>clientSocket.end());
+    packageManage.once('error', () => clientSocket.end());
+    packageManage.once('timeout', () => clientSocket.end());
     packageManage.once('close', this.clientClose(uid));
 
     packageManage.on('sendEnd', (endData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, endData)]));
