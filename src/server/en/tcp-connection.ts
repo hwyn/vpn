@@ -1,9 +1,8 @@
 import { ProxySocket } from '../net-util';
-import { ServerManage, PackageSeparation, PackageUtil, AbnormalManage, EventCommunication } from '../util';
+import { PackageManage, PackageUtil, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
 import { LOCALHOST_ADDRESS } from '../constant';
-import { PackageManage as AManage } from '../agreement/package-manage';
 
 export class TcpConnection extends ProxyBasic {
   constructor(socketID: string) {
@@ -51,8 +50,7 @@ export class TcpConnection extends ProxyBasic {
   };
 
   connectionListener = (uid: string, clientSocket: ProxySocket) => async() => {
-    const packageSeparation = new PackageSeparation();
-    const packageManage = new ServerManage(uid, packageSeparation);
+    const packageManage = new PackageManage('server');
     const eventCommunication = this.eventCommunication;
     
     this.socketMap.set(uid, clientSocket);

@@ -24,8 +24,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * @param uid 
    */
   public notExistUid(uid: string, buffer: Buffer) {
-    const data = PackageUtil.packageSigout(buffer).data;
-    if (!PackageUtil.isEventPackage(data) && this.eventCommunication) {
+    if (this.eventCommunication) {
       this.eventCommunication.createStopResponse(this.socketID, uid);
     }
   }

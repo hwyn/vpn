@@ -51,7 +51,6 @@ class ProxyProcess extends ProxyEventEmitter {
 
   private notSocketProcess({ data }: any) {
     const buffer = Buffer.from(data);
-    const { uid, data: _data } = PackageUtil.packageSigout(buffer);
   }
 
   private send(message: any) {

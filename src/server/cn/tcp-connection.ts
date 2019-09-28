@@ -1,5 +1,5 @@
 import { ProxySocket } from '../net-util';
-import { uuid, PackageSeparation, PackageUtil, BrowserManage, AbnormalManage, EventCommunication } from '../util';
+import { uuid, PackageUtil, PackageManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import {  SERVER_IP } from '../constant';
 
@@ -32,8 +32,7 @@ export class TcpConnection extends ProxyBasic {
   };
 
   connectionListener = (uid: string, clientSocket: ProxySocket) => (data: Buffer) => {
-    const packageSeparation = new PackageSeparation();
-    const packageManage = new BrowserManage(uid, packageSeparation);
+    const packageManage = new PackageManage('client');
     const eventCommunication = this.eventCommunication;
 
     this.socketMap.set(uid, clientSocket);
