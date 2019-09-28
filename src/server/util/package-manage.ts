@@ -4,6 +4,7 @@
 import { PackageSeparation, PackageUtil } from './package-separation';
 import { ProxySocket} from "../net-util/proxy-socket";
 import { COMMUNICATION_EVENT } from '../constant';
+import { PackageManage as AManage } from '../agreement/package-manage';
 
 const { DATA } = COMMUNICATION_EVENT;
 
@@ -22,6 +23,7 @@ export class PackageManage {
 }
 
 export class BrowserManage extends PackageManage {
+  private manage = new AManage();
   constructor(uid: string, packageSeparation: PackageSeparation) {
     super(uid, packageSeparation,  'client');
   }

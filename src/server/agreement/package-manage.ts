@@ -1,9 +1,13 @@
 import { EventEmitter } from '../util/event-emitter';
 import { BufferUtil } from '../util/buffer-util';
-import { PACKAGE_MAX_SIZE , COMMUNICATION_EVENT  } from '../constant';
+import { PACKAGE_MAX_SIZE } from '../constant';
 
 const SERIAL_SIZE = 8;
 const LENGTH_SIZE = 32;
+const DATE = 0;
+const END = 1;
+const ERROR = 2;
+const CLOSE = 3;
 
 /**
  * ----------------------------------------
@@ -91,6 +95,8 @@ export class PackageManage extends EventEmitter {
   private sendSt: any;
   private timeout: number = 1000;
   private clearTimeout: any;
+
+  private endable: boolean = false;
   constructor(maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
@@ -105,6 +111,33 @@ export class PackageManage extends EventEmitter {
     }
   }
 
+  /**
+   * 写入发送数据类型
+   * @param type 类型
+   * @param data Buffer
+   */
+  private writePaackageType(type: number, data: Buffer) {
+    const typeBuffer = Buffer.alloc(8);
+    typeBuffer.writeUInt8(type << 6, 0);
+    return Buffer.concat([typeBuffer.slice(0, 2), data], 2 + data.length);
+  }
+
+  /**
+   * 解析收到数据类型
+   * @param buffer Buffer
+   */
+  private readPackageType(buffer: Buffer): { type: number, data: Buffer } {
+    const typeBuffer = Buffer.alloc(8);
+    buffer.slice(0, 2).copy(typeBuffer, 0, 2, 0);
+    const data = buffer.slice(2);
+    const type = typeBuffer.readUInt8(0) >> 6;
+    return { type, data };
+  }
+
+  /**
+   * 发送出去的数据添加标志信息
+   * @param data Buffer
+   */
   private packing(data: Buffer) {
     const serialBuffer = BufferUtil.concat(this.stickSerial.toString());
     const length = this.titleSize + serialBuffer.length + data.length;
@@ -112,6 +145,10 @@ export class PackageManage extends EventEmitter {
     return BufferUtil.concat(titleBuffer, serialBuffer, data);
   }
 
+  /**
+   * 接收到到信息解析标志信息
+   * @param buffer Buffer
+   */
   private unpacking(buffer: Buffer): { serial: number, packageSize: number, packageBuffer: Buffer, data: Buffer } {
     const title = buffer.slice(0, this.titleSize);
     const [ serialSize, packageSize ] = BufferUtil.readGroupUInt(title, [SERIAL_SIZE, LENGTH_SIZE]) as number[];
@@ -122,7 +159,7 @@ export class PackageManage extends EventEmitter {
     return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
-  private sendData(data: Buffer) {
+  private send(data: Buffer) {
     const sendDate = this.packing(data);
     this.emitAsync('stick', sendDate);
     this.stickSerial++;
@@ -143,16 +180,19 @@ export class PackageManage extends EventEmitter {
   }
 
   stick(data: Buffer) {
+    if (!data || data.length === 0 || this.endable) {
+      return ;
+    }
     let sendDate = Buffer.alloc(0);
     const remainingArray: any[] | Buffer[] = [];
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(data)
+      this.shard.splitData(this.writePaackageType(DATE, data))
     );
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
       if (sendDate.length >= this.maxSize) {
-        this.sendData(sendDate);
+        this.send(sendDate);
         remainingArray.splice(0, remainingArray.length);
       } else {
         remainingArray.push(buffer);
@@ -160,16 +200,17 @@ export class PackageManage extends EventEmitter {
     });
     this.stickCacheBufferArray = remainingArray;
     if (!this.sendSt) {
-      this.sendSt = setTimeout(() => this.directlySend());
+      this.sendSt = setTimeout(() => this.directly());
     }
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void) {
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
+      const { type, data } = this.readPackageType(this.splitMap.get(this.splitSerial));
       this.splitCacheBufferArray = [].concat(
         this.splitCacheBufferArray, 
-        this.shard.unSplitData(this.splitMap.get(this.splitSerial))
+        this.shard.unSplitData(data)
       );
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
@@ -183,7 +224,7 @@ export class PackageManage extends EventEmitter {
       if (splitCount === currentCount) {
         const concatBufffer = BufferUtil.concat(...cacheArray);
         callback ? callback(concatBufffer) : null;
-        this.emitAsync('split', concatBufffer);
+        this.emitAsync('data', concatBufffer);
         cacheArray = [];
         splitArray = [];
       }
@@ -197,9 +238,28 @@ export class PackageManage extends EventEmitter {
     }
   }
 
-  directlySend() {
-    this.sendData(BufferUtil.concat(...this.stickCacheBufferArray));
+  directly() {
+    this.send(BufferUtil.concat(...this.stickCacheBufferArray));
     this.stickCacheBufferArray = [];
     this.sendSt = null;
+  }
+
+  end() {
+    this.endable  = true;
+    this.directly();
+    this.send(this.writePaackageType(END, Buffer.alloc(0)));
+    this.emitAsync('end');
+  }
+
+  close() {
+    this.send(this.writePaackageType(CLOSE, Buffer.alloc(0)));
+    this.emitAsync('close');
+  }
+
+  error(error: Error) {
+    this.endable  = true;
+    this.directly();
+    this.send(this.writePaackageType(ERROR, Buffer.alloc(0)));
+    this.emitAsync('error', error);
   }
 }
