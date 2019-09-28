@@ -21,10 +21,9 @@ export class TcpConnection extends ProxyBasic {
   /**
    * 接收到服务端响应数据
    */
-  public responseData = () => (buffer: Buffer) => {
-    const { uid, cursor, data } = PackageUtil.packageSigout(buffer);
+  public responseData = () => (data: Buffer) => {
+    const { uid, buffer} = PackageUtil.getUid(data);
     const clientSocket = this.socketMap.get(uid);
-
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
@@ -35,26 +34,28 @@ export class TcpConnection extends ProxyBasic {
   connectionListener = (uid: string, clientSocket: ProxySocket) => (data: Buffer) => {
     const packageSeparation = new PackageSeparation();
     const packageManage = new BrowserManage(uid, packageSeparation);
-    const abnormalManage = new AbnormalManage(uid, packageSeparation);
     const eventCommunication = this.eventCommunication;
 
     this.socketMap.set(uid, clientSocket);
-
-    packageSeparation.once('timeout', () => clientSocket.end());
-    packageSeparation.on('sendData', this.send(uid, clientSocket));
-    packageSeparation.on('sendEvent', eventCommunication.sendEvent(uid));
-    packageSeparation.on('receiveData', packageManage.distributeCall(clientSocket));
-    packageSeparation.on('receiveEvent', abnormalManage.message(clientSocket));
     
-    clientSocket.on('data', packageManage.clientDataCall());
-    clientSocket.on('agent', packageManage.agentResponseCall());
-    clientSocket.once('end', abnormalManage.endCall());
-    clientSocket.once('close', abnormalManage.closeCall());
-    clientSocket.once('error', abnormalManage.errorCall());
-    
-    abnormalManage.once('close',this.clientClose(uid));
+    packageManage.on('timeout', () => clientSocket.end());
+    packageManage.on('data', (data: Buffer) => clientSocket.write(data));
+    packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
-    packageManage.clientDataCall()(data);
+    packageManage.once('end', () => clientSocket.end());
+    packageManage.once('error', () => clientSocket.end());
+    packageManage.once('close', this.clientClose(uid));
+
+    packageManage.on('sendEnd', (endData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, endData)]));
+    packageManage.on('sendClose', (closeData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, closeData)]));
+    packageManage.on('sendError', (closeData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, closeData)]));
+
+    clientSocket.on('data', (data: Buffer) => packageManage.write(data));
+    clientSocket.on('agent', (data: Buffer) => packageManage.distribute(data));
+    clientSocket.on('end', () => packageManage.end());
+    clientSocket.on('close', () => packageManage.close());
+    clientSocket.on('error', () => packageManage.error());
+    packageManage.write(data);
   };
 
   callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {

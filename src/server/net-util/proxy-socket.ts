@@ -23,7 +23,7 @@ export class ProxySocket extends ProxyEventEmitter {
     this.mappingAttr(['localAddress', 'localPort']);
     if (openPackage) {
       this.manage = new PackageManage();
-      this.manage.on('stick', this._write.bind(this));
+      this.manage.on('send', this._write.bind(this));
       this.manage.on('timeout', () => this.end());
     }
   }

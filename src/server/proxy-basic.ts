@@ -75,22 +75,19 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * @param clientCursor
    * @param uid 
    */
-  private write(buffer: Buffer, clientCursor: number, uid: string) {
+  private write(buffer: Buffer, clientCursor: number) {
     this.udpClientList[clientCursor].write(UdpServerBasic.writeSocketID(this.socketID, buffer));
   }
 
   /**
    * udp 发送数据
    */
-  protected send = (uid: string, clientSocket: ProxySocket) => (data: Buffer | Buffer[]) => {
+  protected send(clientSocket: ProxySocket, data: Buffer) {
     if (!this.eventCommunication) {
       clientSocket.end();
       return ;
     }
-
-    data.forEach((buffer: any) => {
-      this.write(buffer, this.getCursor(), uid);
-    });
+    this.write(data, this.getCursor());
   };
 
   /**

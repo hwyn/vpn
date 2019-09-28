@@ -11,7 +11,7 @@ const CLOSE = 3;
 
 /**
  * ----------------------------------------
- *  serial | countSum | countCurrent | data
+ *  serial | countCurrent | data
  * ----------------------------------------
  */
 class PackageShard {
@@ -97,6 +97,7 @@ export class PackageManage extends EventEmitter {
   private clearTimeout: any;
 
   private endable: boolean = false;
+  private isNotEnd: boolean = true;
   constructor(maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
@@ -128,8 +129,9 @@ export class PackageManage extends EventEmitter {
    */
   private readPackageType(buffer: Buffer): { type: number, data: Buffer } {
     const typeBuffer = Buffer.alloc(8);
-    buffer.slice(0, 2).copy(typeBuffer, 0, 2, 0);
     const data = buffer.slice(2);
+    typeBuffer[0] = buffer[0];
+    typeBuffer[1] = buffer[1];
     const type = typeBuffer.readUInt8(0) >> 6;
     return { type, data };
   }
@@ -159,9 +161,18 @@ export class PackageManage extends EventEmitter {
     return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
+  private eventSwitch(type: number) {
+    this.isNotEnd = false;
+    switch(type) {
+      case END: this.end(); this.emitAsync('end'); break;
+      case CLOSE: this.close(); this.emitAsync('close'); break;
+      case ERROR: this.error(); this.emitAsync('error'); break;
+    }
+  }
+
   private send(data: Buffer) {
     const sendDate = this.packing(data);
-    this.emitAsync('stick', sendDate);
+    this.emitAsync('send', sendDate);
     this.stickSerial++;
   }
 
@@ -179,15 +190,26 @@ export class PackageManage extends EventEmitter {
     this.splitCacheBuffer = splitBuffer;
   }
 
-  stick(data: Buffer) {
-    if (!data || data.length === 0 || this.endable) {
+  private getEventBuffer(type: number) {
+    const bufferArray = this.shard.splitData(this.writePaackageType(type, Buffer.alloc(0)));
+    return this.packing(BufferUtil.concat(...bufferArray));
+  }
+  
+  private directly() {
+    this.send(BufferUtil.concat(...this.stickCacheBufferArray));
+    this.stickCacheBufferArray = [];
+    this.sendSt = null;
+  }
+
+  stick(data: Buffer, type?: number) {
+    if (!Buffer.isBuffer(data) || this.endable) {
       return ;
     }
     let sendDate = Buffer.alloc(0);
     const remainingArray: any[] | Buffer[] = [];
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(this.writePaackageType(DATE, data))
+      this.shard.splitData(this.writePaackageType(type || DATE, data))
     );
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
@@ -223,8 +245,12 @@ export class PackageManage extends EventEmitter {
       cacheArray.push(data);
       if (splitCount === currentCount) {
         const { type, data: concatBufffer } = this.readPackageType(BufferUtil.concat(...cacheArray));
-        callback ? callback(concatBufffer) : null;
-        this.emitAsync('data', concatBufffer);
+        if (type === DATE) {
+          callback ? callback(concatBufffer) : null;
+          this.emitAsync('data', concatBufffer);
+        } else {
+          this.eventSwitch(type);
+        }
         cacheArray = [];
         splitArray = [];
       }
@@ -238,28 +264,26 @@ export class PackageManage extends EventEmitter {
     }
   }
 
-  directly() {
-    this.send(BufferUtil.concat(...this.stickCacheBufferArray));
-    this.stickCacheBufferArray = [];
-    this.sendSt = null;
-  }
-
   end() {
     this.endable  = true;
     this.directly();
-    this.send(this.writePaackageType(END, Buffer.alloc(0)));
-    this.emitAsync('end');
+    if (this.isNotEnd) {
+      this.emitAsync('sendEnd', this.getEventBuffer(END));
+    }
   }
 
   close() {
-    this.send(this.writePaackageType(CLOSE, Buffer.alloc(0)));
+    if (this.isNotEnd) {
+      this.emitAsync('sendClose', this.getEventBuffer(CLOSE));
+    }
     this.emitAsync('close');
   }
 
-  error(error: Error) {
+  error() {
     this.endable  = true;
     this.directly();
-    this.send(this.writePaackageType(ERROR, Buffer.alloc(0)));
-    this.emitAsync('error', error);
+    if (this.isNotEnd) {
+      this.emitAsync('sendError', this.getEventBuffer(ERROR));
+    }
   }
 }

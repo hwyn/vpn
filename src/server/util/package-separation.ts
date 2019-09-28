@@ -16,6 +16,19 @@ export class PackageUtil {
   static CURSOR_SIZE: 32 = 32;
   static PACKAGE_SIZE: 32 = 32;
 
+  static bindUid(uid: string, buffer: Buffer) {
+    const { UID_BYTE_SIZE } = PackageUtil;
+    const title = BufferUtil.writeGrounUInt([uid.length], [UID_BYTE_SIZE]);
+    return BufferUtil.concat(title, uid, buffer);
+  }
+
+  static getUid(buffer: Buffer): { uid: string, buffer: Buffer} {
+    const { UID_BYTE_SIZE } = PackageUtil;
+    const [uidLength] = BufferUtil.readGroupUInt(buffer, [UID_BYTE_SIZE]);
+    const [ uid, packageBuf ] = BufferUtil.unConcat(buffer, [uidLength], UID_BYTE_SIZE);
+    return { uid: uid.toString(), buffer: packageBuf };
+  }
+
   static packing(type: number, uid: string, buffer: Buffer): Buffer {
     const { UID_BYTE_SIZE, TYPE_BYTE_SIZE, PACKAGE_SIZE } = PackageUtil;
     const title = BufferUtil.writeGrounUInt([0, type, uid.length], [PACKAGE_SIZE, TYPE_BYTE_SIZE, UID_BYTE_SIZE]);
