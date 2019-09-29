@@ -114,7 +114,9 @@ export class PackageManage extends EventEmitter {
     }
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
-      this.stick(Buffer.alloc(0), HEARTBEAT);
+      if (!this.endable) {
+        this.stick(Buffer.alloc(0), HEARTBEAT);
+      }
     }, this.heartbeatTimer);
   }
 
