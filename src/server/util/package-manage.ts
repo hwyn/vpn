@@ -1,7 +1,6 @@
 /**
  * Created by NX on 2019/8/24.
  */
-import { ProxySocket} from "../net-util/proxy-socket";
 import { PackageManage as AManage } from '../agreement/package-manage';
 import { EventEmitter } from './event-emitter';
 
@@ -9,7 +8,7 @@ export class PackageManage extends EventEmitter {
   private manage: AManage = new AManage();
   protected cursor: number = 0;
   protected  isEnd: boolean = false;
-  constructor(protected type?: string) {
+  constructor(private uid: string,protected type?: string) {
     super();
     this.manage.on('send', (data: Buffer) => this.emitAsync('send', data));
     this.manage.on('sendEnd', (data: Buffer) => this.emitAsync('sendEnd', data));
@@ -22,28 +21,23 @@ export class PackageManage extends EventEmitter {
     this.manage.on('timeout', () => this.emitAsync('timeout'));
   }
 
-  distributeCall = (proxySocket: ProxySocket) => ({ data }: any) => {
-    proxySocket.write(data);
-  };
-
   distribute(data: Buffer) {
-    this.manage.split(data);
+    this.manage.split(data, undefined, this.uid);
   }
 
   write(data: Buffer) {
     this.manage.stick(data);
   }
 
-  end(uid: string) {
+  end() {
     this.manage.end();
   }
 
-  close(uid: string) {
+  close() {
     this.manage.close();
   }
 
-  error(uid: string, error: Error) {
-    console.log(`uid------->${uid}`, error);
+  error( error: Error) {
     this.manage.error(error);
   }
 }

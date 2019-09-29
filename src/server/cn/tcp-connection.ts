@@ -32,7 +32,7 @@ export class TcpConnection extends ProxyBasic {
   };
 
   connectionListener = (uid: string, clientSocket: ProxySocket) => (data: Buffer) => {
-    const packageManage = new PackageManage('client');
+    const packageManage = new PackageManage(uid, 'client');
     const eventCommunication = this.eventCommunication;
 
     this.socketMap.set(uid, clientSocket);
@@ -51,9 +51,9 @@ export class TcpConnection extends ProxyBasic {
 
     clientSocket.on('data', (data: Buffer) => packageManage.write(data));
     clientSocket.on('agent', (data: Buffer) => packageManage.distribute(data));
-    clientSocket.on('end', () => packageManage.end(uid));
-    clientSocket.on('close', () => packageManage.close(uid));
-    clientSocket.on('error', (error: Error) => packageManage.error(uid, error));
+    clientSocket.on('end', () => packageManage.end());
+    clientSocket.on('close', () => packageManage.close());
+    clientSocket.on('error', (error: Error) => packageManage.error(error));
     packageManage.write(data);
   };
 

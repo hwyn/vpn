@@ -166,7 +166,7 @@ export class PackageManage extends EventEmitter {
   private eventSwitch(type: number) {
     this.isNotEnd = false;
     switch(type) {
-      case CLOSE: this.emitAsync('_close'); break;
+      case CLOSE: ; break;
       case END: this.emitAsync('end'); break;
       case ERROR: this.emitAsync('error'); break;
     }
@@ -204,8 +204,8 @@ export class PackageManage extends EventEmitter {
     }
     this.sendSt = null;
   }
-
-  stick(data: Buffer, type?: number) {
+  // 240e:39a:354:8740:e095:6cbc:bb29:7901
+  stick(data: Buffer) {
     if (!Buffer.isBuffer(data) || this.endable) {
       return ;
     }
@@ -213,7 +213,7 @@ export class PackageManage extends EventEmitter {
     const remainingArray: any[] | Buffer[] = [];
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(this.writePaackageType(type || DATE, data))
+      this.shard.splitData(this.writePaackageType(DATE, data))
     );
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
@@ -231,7 +231,7 @@ export class PackageManage extends EventEmitter {
     }
   }
 
-  split(buffer: Buffer, callback?: (data: Buffer) => void) {
+  split(buffer: Buffer, callback?: (data: Buffer) => void, uid?: string) {
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
@@ -271,6 +271,7 @@ export class PackageManage extends EventEmitter {
   }
 
   end() {
+    this.endable  = true;
     if (this.isNotEnd) {
       this.directly();
       this.emitAsync('sendEnd', this.getEventBuffer(END));
@@ -278,7 +279,6 @@ export class PackageManage extends EventEmitter {
   }
 
   close() {
-    this.endable = true;
     if (this.isNotEnd) {
       this.emitAsync('sendClose', this.getEventBuffer(CLOSE));
     }
