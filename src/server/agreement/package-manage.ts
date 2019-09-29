@@ -8,7 +8,7 @@ const DATE = 0;
 const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
-
+const HEARTBEAT = 4;
 /**
  * ----------------------------------------
  *  serial | countCurrent | data
@@ -98,11 +98,24 @@ export class PackageManage extends EventEmitter {
 
   private endable: boolean = false;
   private isNotEnd: boolean = true;
+
+  private heartbeatTimer: number = 3000;
+  private heartbeatSt: any;
   constructor(maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
     this.once('_close', () => this.emitAsync('close'));
+  }
+
+  private factoryHeartbeat() {
+    if (this.heartbeatSt !== null) {
+      clearTimeout(this.heartbeatSt);
+    }
+    this.heartbeatSt = setTimeout(() => {
+      this.heartbeatSt = null;
+      this.stick(Buffer.alloc(0), HEARTBEAT);
+    }, this.heartbeatTimer);
   }
 
   private factoryTimout() {
@@ -120,8 +133,8 @@ export class PackageManage extends EventEmitter {
    */
   private writePaackageType(type: number, data: Buffer) {
     const typeBuffer = Buffer.alloc(8);
-    typeBuffer.writeUInt8(type << 6, 0);
-    return Buffer.concat([typeBuffer.slice(0, 2), data], 2 + data.length);
+    typeBuffer.writeUInt8(type << 5, 0);
+    return Buffer.concat([typeBuffer.slice(0, 3), data], 3 + data.length);
   }
 
   /**
@@ -130,10 +143,11 @@ export class PackageManage extends EventEmitter {
    */
   private readPackageType(buffer: Buffer): { type: number, data: Buffer } {
     const typeBuffer = Buffer.alloc(8);
-    const data = buffer.slice(2);
+    const data = buffer.slice(3);
     typeBuffer[0] = buffer[0];
     typeBuffer[1] = buffer[1];
-    const type = typeBuffer.readUInt8(0) >> 6;
+    typeBuffer[2] = buffer[2];
+    const type = typeBuffer.readUInt8(0) >> 5;
     return { type, data };
   }
 
@@ -175,7 +189,7 @@ export class PackageManage extends EventEmitter {
   private send(data: Buffer) {
     const sendDate = this.packing(data);
     this.emitAsync('send', sendDate);
-    
+    this.factoryHeartbeat();
   }
 
   private splitMerge(buffer: Buffer) {
@@ -205,7 +219,7 @@ export class PackageManage extends EventEmitter {
     this.sendSt = null;
   }
   // 240e:39a:354:8740:e095:6cbc:bb29:7901
-  stick(data: Buffer) {
+  stick(data: Buffer, type?: number) {
     if (!Buffer.isBuffer(data) || this.endable) {
       return ;
     }
@@ -213,7 +227,7 @@ export class PackageManage extends EventEmitter {
     const remainingArray: any[] | Buffer[] = [];
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(this.writePaackageType(DATE, data))
+      this.shard.splitData(this.writePaackageType(type || DATE, data))
     );
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
@@ -280,6 +294,12 @@ export class PackageManage extends EventEmitter {
   close() {
     if (this.isNotEnd) {
       this.emitAsync('sendClose', this.getEventBuffer(CLOSE));
+    }
+    if (this.clearTimeout) {
+      this.clearTimeout();
+    }
+    if (this.heartbeatSt) {
+      clearTimeout(this.heartbeatSt);
     }
     this.emitAsync('_close');
   }

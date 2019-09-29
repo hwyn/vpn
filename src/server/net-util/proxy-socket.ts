@@ -20,7 +20,7 @@ export class ProxySocket extends ProxyEventEmitter {
     this.onInit();
     this.associatedListener(['data']);
     this.associatedListener(['end', 'close', 'connect'], true);
-    this.mappingAttr(['localAddress', 'localPort']);
+    this.mappingAttr(['localAddress', 'localPort', 'destroyed']);
     if (openPackage) {
       this.manage = new PackageManage();
       this.manage.on('send', this._write.bind(this));

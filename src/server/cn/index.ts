@@ -42,7 +42,7 @@ class ListenerClient extends EventEmitter {
     const tcpConnection = this.tcpConnectionManage.getTcpConnect(this.socketID) as TcpConnection;
     
     if (!tcpConnection || !this.socketID) {
-      return clientSocket.end();
+      return clientSocket.destroy();
     }
     tcpConnection.call(port)(clientSocket);
   }

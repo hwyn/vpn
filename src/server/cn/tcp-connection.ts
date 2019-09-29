@@ -38,7 +38,7 @@ export class TcpConnection extends ProxyBasic {
     this.socketMap.set(uid, clientSocket);
     
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
-    packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
+    packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
     packageManage.once('end', () =>clientSocket.end());
     packageManage.once('error', (error: Error) => clientSocket.destroy(error));

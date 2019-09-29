@@ -4,7 +4,7 @@
 import { ProxyUdpServer  } from './net-util/proxy-udp';
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
 import { ProxySocket } from './net-util';
-import { PackageUtil, EventCommunication, BufferUtil } from './util';
+import { EventCommunication } from './util';
 import { UdpServerBasic } from './udp-server-basic';
 
 export abstract class ProxyBasic extends UdpServerBasic {
@@ -33,10 +33,14 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * 停止当前连接
    */
   public stopClient(uid: string) {
-    const clientTcp = this.socketMap.get(uid);
-    if (clientTcp) {
-      console.log(`-------stop-------${uid}------`);
-      clientTcp.end();
+    const clientSocket = this.socketMap.get(uid);
+    if (clientSocket) {
+      if (!clientSocket.destroyed) {
+        console.log(`-------stop-------${uid}------`);
+        clientSocket.destroy(new Error('socket stop'));
+      } else {
+        this.clientClose(uid)();
+      }
     }
   }
 
@@ -81,9 +85,9 @@ export abstract class ProxyBasic extends UdpServerBasic {
   /**
    * udp 发送数据
    */
-  protected send(clientSocket: ProxySocket, data: Buffer) {
+  protected send(data: Buffer) {
     if (!this.eventCommunication) {
-      clientSocket.end();
+      this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.destroy());
       return ;
     }
     this.write(data, this.getCursor());

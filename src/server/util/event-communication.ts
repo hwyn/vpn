@@ -88,7 +88,6 @@ export class EventCommunication extends ProxyEventEmitter {
   }
   
   createLinkEror =  (uid: string) => () => {
-    console.log(uid);
     this.write(this.createEvent(uid, LINKERROR));
   }
 
