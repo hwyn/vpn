@@ -41,7 +41,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
     packageManage.once('end', () =>clientSocket.end());
-    packageManage.once('error', () => clientSocket.end());
+    packageManage.once('error', (error: Error) => clientSocket.destroy(error));
     packageManage.once('timeout', () => clientSocket.end());
     packageManage.once('close', this.clientClose(uid));
 
@@ -60,13 +60,13 @@ export class TcpConnection extends ProxyBasic {
 
   callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {
     if (!this.eventCommunication) {
-      return clientSocket.end();
+      return clientSocket.destroy(new Error('socket 连接失败'));
     }
     const uid = uuid();
     console.log(`--------client connection ${ uid }----------`);
     this.eventCommunication.createLink(uid, port, data, (error: Error) => {
       if (error) {
-        return clientSocket.end();
+        return clientSocket.destroy(error);
       }
       this.connectionListener(uid, clientSocket)(data);
     });

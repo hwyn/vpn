@@ -168,7 +168,7 @@ export class PackageManage extends EventEmitter {
     switch(type) {
       case CLOSE: this.endable ? null : this.emitAsync('end'); break;
       case END: this.emitAsync('end'); break;
-      case ERROR: this.emitAsync('error'); break;
+      case ERROR: this.emitAsync('error', new Error('远程sockt错误')); break;
     }
   }
 
@@ -273,7 +273,6 @@ export class PackageManage extends EventEmitter {
   end() {
     this.endable  = true;
     if (this.isNotEnd) {
-      this.directly();
       this.emitAsync('sendEnd', this.getEventBuffer(END));
     }
   }
@@ -288,7 +287,6 @@ export class PackageManage extends EventEmitter {
   error(error: Error) {
     this.endable  = true;
     if (this.isNotEnd) {
-      this.directly();
       this.emitAsync('sendError', this.getEventBuffer(ERROR));
     }
   }

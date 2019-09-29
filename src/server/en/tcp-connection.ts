@@ -59,7 +59,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
     packageManage.once('end', () =>clientSocket.end());
-    packageManage.once('error', () => clientSocket.destroy());
+    packageManage.once('error', (error: Error) => clientSocket.destroy(error));
     packageManage.once('timeout', () => clientSocket.end());
     packageManage.once('close', this.clientClose(uid));
 
@@ -90,7 +90,7 @@ export class TcpConnection extends ProxyBasic {
       clientSocket.once('connect', eventCommunication.createLinkSuccess(uid));
       clientSocket.once('connect-error', this.eventCommunication.createLinkEror(uid));
     } catch(e) {
-      eventCommunication.createLinkEror(uid);
+      eventCommunication.createLinkEror(uid)();
     }
   }
 }

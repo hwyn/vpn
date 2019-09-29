@@ -16,7 +16,7 @@ export class PackageManage extends EventEmitter {
     this.manage.on('sendClose', (data: Buffer) => this.emitAsync('sendEnd', data));
     this.manage.on('data', (data: Buffer) => this.emitAsync('data', data));
     this.manage.on('end', () => this.emitAsync('end'));
-    this.manage.on('error', () => this.emitAsync('error'));
+    this.manage.on('error', (error: Error) => this.emitAsync('error', error));
     this.manage.on('close', () => this.emitAsync('close'));
     this.manage.on('timeout', () => this.emitAsync('timeout'));
   }
@@ -37,7 +37,8 @@ export class PackageManage extends EventEmitter {
     this.manage.close();
   }
 
-  error( error: Error) {
+  error(error: Error) {
+    console.log(`--------${this.uid}-----`, error);
     this.manage.error(error);
   }
 }
