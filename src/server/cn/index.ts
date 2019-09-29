@@ -14,7 +14,7 @@ import {
 class ListenerClient extends EventEmitter {
   private socketID: string;
   private agreement: AgreementClientUtil;
-  private tcpConnectionManage: TcpConnectionManage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER);
+  private tcpConnectionManage: TcpConnectionManage = new TcpConnectionManage(CLIENT_UDP_INITIAL_PORT, CLIENT_MAX_UDP_SERVER, 0);
   constructor() {
     super();
     this.onInit();

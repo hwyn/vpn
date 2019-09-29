@@ -4,7 +4,7 @@ import { TcpConnection } from './tcp-connection';
 import { TcpConnectionManage } from '../util/tcp-connection-manage';
 import { SERVER_TCP_PORT, SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER } from '../constant';
 
-const tcpConnectionManage = new TcpConnectionManage(SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER);
+const tcpConnectionManage = new TcpConnectionManage(SERVER_UDP_INITIAL_PORT, SERVER_MAX_UDP_SERVER, 1);
 
 tcpConnectionManage.on('udp-message', (buffer: Buffer) => proxyProcess.requestMessage(buffer));
 tcpConnectionManage.on('message', (tcpConnection: TcpConnection, buffer: Buffer) => tcpConnection.requestData()(buffer));

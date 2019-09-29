@@ -79,10 +79,15 @@ export const getHttpsClientHello = (() => {
 
   return (buffer: Buffer) => {
     const { header, body } = formatHeader(buffer);
-    const format = formatBody(body);
-    format.extensions.list = formatExtension(format.extensions.buffer);
-    const serverExtension = format.extensions.list.filter(({ type }: any) => type === 0)[0];
-    const server = serverExtension ? formatServerExtension(serverExtension) : { host: '127.0.0.1' };
+    let server = { host: '127.0.0.1' };
+    try {
+      const format = formatBody(body);
+      format.extensions.list = formatExtension(format.extensions.buffer);
+      const serverExtension = format.extensions.list.filter(({ type }: any) => type === 0)[0];
+      server = serverExtension ? formatServerExtension(serverExtension) : { host: '127.0.0.1' };
+    } catch(e) {
+      console.log('clientHello', e);
+    }
 
     return {
       header,

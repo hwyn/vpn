@@ -7,7 +7,7 @@ const { UDP_REQUEST_MESSAGE, UDP_RESPONSE_MESSAGE  } = PROCESS_EVENT_TYPE;
 
 export class TcpConnectionManage extends UdpServerBasic {
   private connection: Map<string, ProxyBasic> = new Map();
-  constructor(initialPort: number, maxServer: number) {
+  constructor(initialPort: number, maxServer: number, private type?: number) {
     super();
     this.createUdpServer(initialPort, maxServer);
     this.initProxyProcess();
@@ -17,8 +17,8 @@ export class TcpConnectionManage extends UdpServerBasic {
    * 初始化进程监听
    */
   protected initProxyProcess() {
-    proxyProcess.on(UDP_REQUEST_MESSAGE, this.switchMessage.bind(this));
-    proxyProcess.on(UDP_RESPONSE_MESSAGE, this.switchMessage.bind(this));
+    this.type === 0 ?  proxyProcess.on(UDP_RESPONSE_MESSAGE, this.switchMessage.bind(this)) : proxyProcess.on(UDP_REQUEST_MESSAGE, this.switchMessage.bind(this));
+  ;
   }
 
   private async getConnecction(data: Buffer): Promise<any> {

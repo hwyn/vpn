@@ -36,7 +36,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       if (!clientSocket.destroyed) {
-        console.log(`-------stop-------${uid}------`);
+        console.log(`----${this.serverName}---stop-------${uid}------`);
         clientSocket.destroy(new Error('socket stop'));
       } else {
         this.clientClose(uid)();

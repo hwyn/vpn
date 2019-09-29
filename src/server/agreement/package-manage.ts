@@ -99,7 +99,7 @@ export class PackageManage extends EventEmitter {
   private endable: boolean = false;
   private isNotEnd: boolean = true;
 
-  private heartbeatTimer: number = 3000;
+  private heartbeatTimer: number = 15000;
   private heartbeatSt: any;
   constructor(maxSize?: number) {
     super();
@@ -114,7 +114,7 @@ export class PackageManage extends EventEmitter {
     }
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
-      if (!this.endable) {
+      if (!this.endable && this.isNotEnd) {
         this.stick(Buffer.alloc(0), HEARTBEAT);
       }
     }, this.heartbeatTimer);
