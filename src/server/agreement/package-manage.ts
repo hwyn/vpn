@@ -166,7 +166,7 @@ export class PackageManage extends EventEmitter {
   private eventSwitch(type: number) {
     this.isNotEnd = false;
     switch(type) {
-      case CLOSE: ; break;
+      case CLOSE: this.endable ? null : this.emitAsync('end'); break;
       case END: this.emitAsync('end'); break;
       case ERROR: this.emitAsync('error'); break;
     }

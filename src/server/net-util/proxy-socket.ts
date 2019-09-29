@@ -5,7 +5,7 @@ import { PackageManage } from '../agreement/package-manage';
 
 export class ProxySocket extends ProxyEventEmitter {
   static pipeFns: string[] = ['destroy', 'address', 'close'];
-  static interceptEvents: string[] = ['data', 'end', 'error', 'close', 'connect'];
+  static interceptEvents: string[] = ['data', 'end', 'error', 'close', 'timeout', 'connect'];
   static createSocketClient = (host: string, port: number, openPackage?: boolean): ProxySocket => {
     return new ProxySocket(createConnection({ host, port }), openPackage);
   };

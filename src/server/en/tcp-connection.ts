@@ -59,7 +59,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('send', (data: Buffer) => this.send(clientSocket, PackageUtil.bindUid(uid, data)));
 
     packageManage.once('end', () =>clientSocket.end());
-    packageManage.once('error', () => clientSocket.end());
+    packageManage.once('error', () => clientSocket.destroy());
     packageManage.once('timeout', () => clientSocket.end());
     packageManage.once('close', this.clientClose(uid));
 
@@ -68,6 +68,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('sendError', (closeData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, closeData)]));
 
     clientSocket.on('data', (data: Buffer) => packageManage.write(data));
+    // clientSocket.on('timeout', () => clientSocket.end());
     clientSocket.on('agent', (data: Buffer) => packageManage.distribute(data));
     clientSocket.on('end', () => packageManage.end());
     clientSocket.on('close', () => packageManage.close());
