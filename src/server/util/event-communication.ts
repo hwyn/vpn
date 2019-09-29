@@ -3,7 +3,7 @@ import { BufferUtil } from './buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
 import { ProxySocket } from '../net-util/proxy-socket';
 import { ProxyEventEmitter } from '../net-util/proxy-event-emitter';
-import { uuid } from './tools';
+import { LOCALHOST_ADDRESS } from '../constant';
 
 const LINK = 0;
 const LINKSUCCES = 1;
@@ -44,7 +44,7 @@ export class EventCommunication extends ProxyEventEmitter {
     const { host } = port === 443 ? getHttpsClientHello(data) : getHttp(data);
     const body = BufferUtil.writeGrounUInt([port, host.length], [16, 8]);
     this.clientLinkEventDefault(uid, callback);
-    if (!host) {
+    if (!host || host === '127.0.0.1' || host === LOCALHOST_ADDRESS) {
       this.emitAsync('link-error', { uid });
     } else {
       this.write(BufferUtil.concat(this.createHeader(uid, LINK), body, host));
