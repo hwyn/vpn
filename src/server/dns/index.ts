@@ -15,10 +15,10 @@ class DnsServerConnection {
       this.idToRinfoMap.set(notice.transactionID, rinfo);
       return dnsServer.write(data, 53, CN_DNS_ADDRESS);
     }
-
-    const answerDomainList: any = notice.answerDomainObject.domains
+    const questionFirst = notice.questionDomainObject.domains[0];
+    const answerDomainList: any = !questionFirst ? [] : notice.answerDomainObject.domains
       .map((item: DomainNameObject) => 
-        getProxyAddress(item)
+        getProxyAddress(questionFirst.name, item)
       ).filter((item: any) => !!item).map((item: DomainNameObject) => ({
         ...item,
         ttl: 0

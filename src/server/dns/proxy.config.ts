@@ -3,18 +3,9 @@ import { hasOwnProperty } from '../util';
 import { LOCALHOST_ADDRESS } from '../constant';
 
 const proxy = {
-  'nodejs.cn': LOCALHOST_ADDRESS,
-  '*.nodejs.cn': LOCALHOST_ADDRESS,
-  'baidu.com':  LOCALHOST_ADDRESS,
   '*.baidu.com': LOCALHOST_ADDRESS,
-  // '*.wshifen.com': LOCALHOST_ADDRESS,
-  // '*.bdstatic.com': LOCALHOST_ADDRESS,
-  // '*.gshifen.com': LOCALHOST_ADDRESS,
-  // '*.a.shifen.com': LOCALHOST_ADDRESS,
-  // '*.bilibili.com': LOCALHOST_ADDRESS,
-  '*': LOCALHOST_ADDRESS,
-  // '*': '10.248.63.76',
-  // '*.expressjs.com.cn': '10.248.63.76',
+  '*.bdstatic.com': LOCALHOST_ADDRESS,
+  '*.bilibili.com': LOCALHOST_ADDRESS
 };
 
 const encodeAddress = (address: string) => {
@@ -36,15 +27,16 @@ const decordAddress = (rdata: string) => {
   return address.join('.');
 }
 
-export const getProxyAddress = (domain: DomainNameObject): DomainNameObject | boolean => {
+export const getProxyAddress = (questionName: string, domain: DomainNameObject): DomainNameObject | boolean => {
   const { name, type, class: kClass } = domain;
-  const parts = name.split('.');
+  const parts = questionName.split('.');
   let rdata;
-  if (name === 'localhost' || /^\d{3}\.\d{3}\.\d{3}\.\d{3}$/.test(name) || domain.class !== 1) {
+  if (name === 'localhost' || /^\d{3}\.\d{3}\.\d{3}\.\d{3}$/.test(questionName) || domain.class !== 1) {
     return domain;
   }
-  if (hasOwnProperty(proxy, name)) {
-    rdata = encodeAddress(proxy[name]);
+
+  if (hasOwnProperty(proxy, questionName)) {
+    rdata = encodeAddress(proxy[questionName]);
   } else {
     while (parts.length) {
       parts[0] = '*';

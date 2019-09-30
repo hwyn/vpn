@@ -1,7 +1,8 @@
-import { EventEmitter } from '../util/event-emitter';
+import { EventEmitter, Handler } from '../util/event-emitter';
 import { isArray } from '../util/tools';
 
 export class ProxyEventEmitter extends EventEmitter {
+  private listenerInfo: Map<string, any> = new Map();
   constructor(public source: any, protected mappingFnNames?: string[]) {
     super();
     this.mappingMethod();
@@ -17,8 +18,33 @@ export class ProxyEventEmitter extends EventEmitter {
       (event as string[]).forEach((eve: string) => this.associatedListener(eve, isSync));
     } else {
       const emit = isSync ? 'emitAsync' : 'emitSync';
-      this.source.on(event as string, (...arg: any[]) => this[emit](event, ...arg));
+      this.listenerInfo.set(event as string, {
+        emit,
+        isListener: false
+      });
     }
+  }
+
+  on(key: string, handler: Handler) {
+    const removeHandler = super.on(key, handler);
+    const listenerInfo = this.listenerInfo.get(key);
+    if (listenerInfo && !listenerInfo.isListener) {
+      listenerInfo.isListener = true;
+      listenerInfo.eventFn = (...arg: any[]) => this[listenerInfo.emit](key, ...arg);
+      this.source.on(key, listenerInfo.eventFn);
+    }
+    return removeHandler;
+  }
+
+  remove(key: string, handler: Handler) {
+    const result = super.remove(key, handler);
+    const listenerInfo = this.listenerInfo.get(key);
+    if (this.events[key] && this.events[key].length === 0 && listenerInfo) {
+      this.source.removeListener(key, listenerInfo.eventFn);
+      listenerInfo.isListener = false;
+      delete listenerInfo.eventFn;
+    }
+    return result;
   }
 
   /**

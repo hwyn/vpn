@@ -101,6 +101,7 @@ export class PackageManage extends EventEmitter {
 
   private heartbeatTimer: number = 15000;
   private heartbeatSt: any;
+
   constructor(maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
