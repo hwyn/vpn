@@ -9,9 +9,11 @@ const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
 const HEARTBEAT = 4;
+
+const MAX_SERIAL = Math.pow(2, 16);
 /**
  * ----------------------------------------
- *  serial | countCurrent | data
+ *  count | countCurrent | data
  * ----------------------------------------
  */
 class PackageShard {
@@ -76,13 +78,17 @@ class PackageShard {
 }
 
 /**
- * -------------------------------------------------
- *  serialSize | lengthSize | serial | length | data
- * -------------------------------------------------
+ * ------------------------------------------------------------------------
+ *                                            | count | countCurrent | data
+ *                                            | count | countCurrent | data
+ *  serialSize | lengthSize | serial | length | count | countCurrent | data
+ *                                            | count | countCurrent | data
+ *                                            | count | countCurrent | data
+ * ------------------------------------------------------------------------
  */
 export class PackageManage extends EventEmitter {
-  private stickSerial: number = 0;
-  private splitSerial: number = 0;
+  private _stickSerial: number = 0;
+  private _splitSerial: number = 0;
   private stickCacheBufferArray: Buffer[] = [];
 
   private splitCacheBuffer: Buffer = Buffer.alloc(0);
@@ -221,11 +227,6 @@ export class PackageManage extends EventEmitter {
     }
     this.splitCacheBuffer = splitBuffer;
   }
-
-  private getEventBuffer(type: number) {
-    const bufferArray = this.shard.splitData(this.writePaackageType(type, Buffer.alloc(0)));
-    return this.packing(BufferUtil.concat(...bufferArray));
-  }
   
   private directly() {
     if (this.stickCacheBufferArray.length) {
@@ -238,7 +239,7 @@ export class PackageManage extends EventEmitter {
   private statusSync(isTargetChange?: boolean) {
     const { localhostStatus, targetStatus } = this;
     if (!isTargetChange && localhostStatus !== DATE) {
-      this.emitAsync('statusSync', this.getEventBuffer(localhostStatus));
+      this.stick(Buffer.alloc(0), localhostStatus);
     }
 
     if (targetStatus === CLOSE) {
@@ -343,6 +344,28 @@ export class PackageManage extends EventEmitter {
       this.emitAsync('error', error);
     } else {
       this.emitAsync('end');
+    }
+  }
+
+  get stickSerial() {
+    return this._stickSerial;
+  }
+
+  set stickSerial(val: number) {
+    this._stickSerial = val;
+    if (val > MAX_SERIAL - 1) {
+      this._stickSerial = 0;
+    }
+  }
+
+  get splitSerial() {
+    return this._splitSerial;
+  }
+
+  set splitSerial(val: number) {
+    this._splitSerial = val;
+    if (val > MAX_SERIAL - 1) {
+      this._splitSerial = 0;
     }
   }
 }

@@ -8,8 +8,7 @@ import { LOCALHOST_ADDRESS } from '../constant';
 const LINK = 0;
 const LINKSUCCES = 1;
 const LINKERROR = 5;
-const ONELINK = 6;
-const STOP = 7;
+const STOP = 6;
 
 export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
@@ -58,21 +57,6 @@ export class EventCommunication extends ProxyEventEmitter {
     return { uid, port, host: host.toString() };
   }
 
-  parseOneLink(uid: string, body: Buffer) {
-    const [ bodyLength ] = BufferUtil.readGroupUInt(body, [ 16 ]);
-    const [ title, eventInfo ] = BufferUtil.unConcat(body, [ 16, bodyLength ]);
-    this.emitAsync('link-info', eventInfo);
-  }
-
-  sendEvent = (uid: string) => (data: Buffer[]) => {
-    data.forEach((buffer: Buffer) => {
-      const header = this.createHeader(uid, ONELINK);
-      const body = BufferUtil.writeGrounUInt([buffer.length], [16]);
-      const info = BufferUtil.concat(header, body, buffer);
-      this.write(info);
-    });
-  }
-
   createEvent(uid: string, type: number): Buffer {
     return this.createHeader(uid, type);
   }
@@ -100,7 +84,6 @@ export class EventCommunication extends ProxyEventEmitter {
     switch(type) {
       case LINK: this.parseLink(uid, body); break;
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
-      case ONELINK: this.parseOneLink(uid, body); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
       case STOP: this.unStopResponse(uid, body); break;
     }

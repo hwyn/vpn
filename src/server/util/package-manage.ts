@@ -11,7 +11,6 @@ export class PackageManage extends EventEmitter {
   constructor(private uid: string,protected type?: string) {
     super();
     this.manage.on('send', (data: Buffer) => this.emitAsync('send', data));
-    this.manage.on('statusSync', (data: Buffer) => this.emitAsync('statusSync', data));
     this.manage.on('data', (data: Buffer) => this.emitAsync('data', data));
     this.manage.on('end', () => this.emitAsync('end'));
     this.manage.on('error', (error: Error) => this.emitAsync('error', error));
