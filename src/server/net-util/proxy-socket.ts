@@ -40,6 +40,7 @@ export class ProxySocket extends ProxyEventEmitter {
       if (this.connecting) {
         this.emitAsync('connect-error', error);
       }
+      if (this.openPackage) this.manage.destroy(error);
       this.emitAsync('error', error);
     });
     if (this.openPackage) {

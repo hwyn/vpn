@@ -96,33 +96,42 @@ export class PackageManage extends EventEmitter {
   private timeout: number = 1000;
   private clearTimeout: any;
 
-  private endable: boolean = false;
-  private isNotEnd: boolean = true;
-
+  private openHearbeat: boolean = false;
   private heartbeatTimer: number = 15000;
   private heartbeatSt: any;
-
-  constructor(maxSize?: number) {
+  private localhostStatus: number = DATE;
+  private targetStatus: number = DATE;
+  constructor(openHearbeat?: boolean, maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
+    this.openHearbeat = openHearbeat || false;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
-    this.once('_close', () => this.emitAsync('close'));
   }
 
   private factoryHeartbeat() {
     if (this.heartbeatSt !== null) {
       clearTimeout(this.heartbeatSt);
     }
+
+    if (this.targetStatus === CLOSE) {
+      return ;
+    }
+
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
-      if (!this.endable && this.isNotEnd) {
-        this.stick(Buffer.alloc(0), HEARTBEAT);
-      }
+      const buffer = this.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+      this.stick(buffer, HEARTBEAT);
     }, this.heartbeatTimer);
   }
 
   private factoryTimout() {
-    let si = setTimeout(() => this.emitAsync('timeout'), this.timeout);
+    let si = setTimeout(() => {
+      this.targetStatus = CLOSE;
+      this.emitAsync('timeout');
+      this.destroy(new Error('socket timeout'));
+      this.clearTimeout = null;
+    }, this.timeout);
+
     this.clearTimeout = () => {
       this.clearTimeout = null;
       clearTimeout(si);
@@ -180,24 +189,27 @@ export class PackageManage extends EventEmitter {
     return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
-  private eventSwitch(type: number) {
-    this.isNotEnd = false;
-    switch(type) {
-      case CLOSE: this.endable ? null : this.emitAsync('end'); break;
-      case END: this.emitAsync('end'); break;
-      case ERROR: this.emitAsync('error', new Error('远程sockt错误')); break;
+  private eventSwitch(type: number, buffer?: Buffer) {
+    this.targetStatus = type;
+    if (type === HEARTBEAT) {
+      const { type: targetStatus } = this.readPackageType(buffer);
+      this.targetStatus = targetStatus;
+    }
+    if (this.targetStatus !== DATE) {
+      this.statusSync(true);
     }
   }
 
   private send(data: Buffer) {
     const sendDate = this.packing(data);
     this.emitAsync('send', sendDate);
-    this.factoryHeartbeat();
+    this.openHearbeat && this.factoryHeartbeat();
   }
 
   private splitMerge(buffer: Buffer) {
     let splitBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
     const size = SERIAL_SIZE + LENGTH_SIZE;
+    let a;
     while (splitBuffer.length > size) {
       const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
       if (packageSize > packageBuffer.length) {
@@ -205,6 +217,7 @@ export class PackageManage extends EventEmitter {
       }
       this.splitMap.set(serial, data);
       splitBuffer = splitBuffer.slice(packageSize);
+      a= serial;
     }
     this.splitCacheBuffer = splitBuffer;
   }
@@ -221,9 +234,30 @@ export class PackageManage extends EventEmitter {
     }
     this.sendSt = null;
   }
+
+  private statusSync(isTargetChange?: boolean) {
+    const { localhostStatus, targetStatus } = this;
+    if (!isTargetChange && localhostStatus !== DATE) {
+      this.emitAsync('statusSync', this.getEventBuffer(localhostStatus));
+    }
+
+    if (targetStatus === CLOSE) {
+      this.heartbeatSt && clearTimeout(this.heartbeatSt);
+    }
+
+    if (localhostStatus !== targetStatus) {
+      if (localhostStatus === DATE && [END, ERROR].includes(targetStatus)) {
+        targetStatus === ERROR ? this.emitAsync('error') : this.emitAsync('end');
+      }
+    } else if (localhostStatus === targetStatus && localhostStatus === CLOSE) {
+      this.clearTimeout && this.clearTimeout();
+      this.emitAsync('close');
+    }
+  }
+
   // 240e:39a:354:8740:e095:6cbc:bb29:7901
   stick(data: Buffer, type?: number) {
-    if (!Buffer.isBuffer(data) || this.endable) {
+    if (!Buffer.isBuffer(data)) {
       return ;
     }
     let sendDate = Buffer.alloc(0);
@@ -274,43 +308,41 @@ export class PackageManage extends EventEmitter {
       if (splitCount === currentCount) {
         const { type, data: concatBufffer } = this.readPackageType(BufferUtil.concat(...cacheArray));
         if (type === DATE) {
-          callback ? callback(concatBufffer) : null;
-          this.emitAsync('data', concatBufffer);
+          if (this.localhostStatus !== CLOSE) {
+            callback ? callback(concatBufffer) : null;
+            this.emitAsync('data', concatBufffer);
+          }
         } else {
-          this.eventSwitch(type);
+          this.eventSwitch(type, concatBufffer);
         }
         cacheArray = [];
         splitArray = [];
       }
     });
     this.splitCacheBufferArray = splitArray;
-
   }
 
   end() {
-    this.endable  = true;
-    if (this.isNotEnd) {
-      this.emitAsync('sendEnd', this.getEventBuffer(END));
-    }
+    this.localhostStatus = END;
+    this.statusSync();
   }
 
   close() {
-    if (this.isNotEnd) {
-      this.emitAsync('sendClose', this.getEventBuffer(CLOSE));
-    }
-    if (this.clearTimeout) {
-      this.clearTimeout();
-    }
-    if (this.heartbeatSt) {
-      clearTimeout(this.heartbeatSt);
-    }
-    this.emitAsync('_close');
+    this.localhostStatus = CLOSE;
+    this.statusSync();
   }
-  // message close 7cd83a9d-adb1-44c3-b52e-f4cc5e8fb4c4
+
   error(error: Error) {
-    this.endable  = true;
-    if (this.isNotEnd) {
-      this.emitAsync('sendError', this.getEventBuffer(ERROR));
+    this.localhostStatus = ERROR;
+    this.statusSync();
+  }
+
+  destroy(error?: Error) {
+    this.targetStatus = CLOSE;
+    if (error) {
+      this.emitAsync('error', error);
+    } else {
+      this.emitAsync('end');
     }
   }
 }

@@ -5,20 +5,17 @@ import { PackageManage as AManage } from '../agreement/package-manage';
 import { EventEmitter } from './event-emitter';
 
 export class PackageManage extends EventEmitter {
-  private manage: AManage = new AManage();
+  private manage: AManage = new AManage(true);
   protected cursor: number = 0;
   protected  isEnd: boolean = false;
   constructor(private uid: string,protected type?: string) {
     super();
     this.manage.on('send', (data: Buffer) => this.emitAsync('send', data));
-    this.manage.on('sendEnd', (data: Buffer) => this.emitAsync('sendEnd', data));
-    this.manage.on('sendError', (data: Buffer) => this.emitAsync('sendEnd', data));
-    this.manage.on('sendClose', (data: Buffer) => this.emitAsync('sendEnd', data));
+    this.manage.on('statusSync', (data: Buffer) => this.emitAsync('statusSync', data));
     this.manage.on('data', (data: Buffer) => this.emitAsync('data', data));
     this.manage.on('end', () => this.emitAsync('end'));
     this.manage.on('error', (error: Error) => this.emitAsync('error', error));
     this.manage.on('close', () => this.emitAsync('close'));
-    this.manage.on('timeout', () => this.emitAsync('timeout'));
   }
 
   distribute(data: Buffer) {
@@ -40,5 +37,9 @@ export class PackageManage extends EventEmitter {
   error(error: Error) {
     console.log(`--------${this.uid}-----`, error);
     this.manage.error(error);
+  }
+
+  destroy(error?: Error) {
+    this.manage.destroy(error);
   }
 }

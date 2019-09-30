@@ -3,9 +3,12 @@ import { hasOwnProperty } from '../util';
 import { LOCALHOST_ADDRESS } from '../constant';
 
 const proxy = {
-  '*.baidu.com': LOCALHOST_ADDRESS,
-  '*.bdstatic.com': LOCALHOST_ADDRESS,
-  '*.bilibili.com': LOCALHOST_ADDRESS
+  // '*.baidu.com': LOCALHOST_ADDRESS,
+  // '*.bdstatic.com': LOCALHOST_ADDRESS,
+  '*.bilibili.com': LOCALHOST_ADDRESS,
+  '*.acgvideo.com': LOCALHOST_ADDRESS,
+  '*.hdslb.com': LOCALHOST_ADDRESS,
+  // '*.biliapi.net': LOCALHOST_ADDRESS,
 };
 
 const encodeAddress = (address: string) => {

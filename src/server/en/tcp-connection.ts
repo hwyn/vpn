@@ -45,6 +45,7 @@ export class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
+      console.log(uid);
       this.notExistUid(uid, buffer);
     }
   };
@@ -60,15 +61,13 @@ export class TcpConnection extends ProxyBasic {
 
     packageManage.once('end', () =>clientSocket.end());
     packageManage.once('error', (error: Error) => clientSocket.destroy(error));
-    packageManage.once('timeout', () => clientSocket.end());
     packageManage.once('close', this.clientClose(uid));
 
-    packageManage.on('sendEnd', (endData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, endData)]));
-    packageManage.on('sendClose', (closeData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, closeData)]));
-    packageManage.on('sendError', (closeData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, closeData)]));
+    packageManage.on('statusSync', (endData: Buffer) => eventCommunication.sendEvent(uid)([PackageUtil.bindUid(uid, endData)]));
 
     clientSocket.on('data', (data: Buffer) => packageManage.write(data));
     clientSocket.on('agent', (data: Buffer) => packageManage.distribute(data));
+    clientSocket.on('agentError', () => packageManage.destroy());
     clientSocket.on('end', () => packageManage.end());
     clientSocket.on('close', () => packageManage.close());
     clientSocket.on('error', (error: Error) => packageManage.error(error));
