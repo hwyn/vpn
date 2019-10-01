@@ -7,8 +7,9 @@ const proxy = {
   // '*.bdstatic.com': LOCALHOST_ADDRESS,
   '*.bilibili.com': LOCALHOST_ADDRESS,
   '*.acgvideo.com': LOCALHOST_ADDRESS,
+  '*.smtcdns.net': LOCALHOST_ADDRESS,
   '*.hdslb.com': LOCALHOST_ADDRESS,
-  // '*.biliapi.net': LOCALHOST_ADDRESS,
+  // '*': LOCALHOST_ADDRESS,
 };
 
 const encodeAddress = (address: string) => {

@@ -34,7 +34,7 @@ export class PackageManage extends EventEmitter {
   }
 
   error(error: Error) {
-    console.log(`--------${this.uid}-----`, error);
+    console.log(`--------${this.uid}-----`, error.message);
     this.manage.error(error);
   }
 

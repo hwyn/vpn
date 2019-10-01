@@ -43,9 +43,10 @@ export class TcpConnection extends ProxyBasic {
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
-    } else {
-      this.notExistUid(uid, buffer);
-    }
+    } 
+    // else {
+    //   this.notExistUid(uid, buffer);
+    // }
   };
 
   connectionListener = (uid: string, clientSocket: ProxySocket) => async() => {
@@ -56,7 +57,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
-    packageManage.once('end', () =>clientSocket.end());
+    packageManage.once('end', () => clientSocket.end());
     packageManage.once('error', (error: Error) => clientSocket.destroy(error));
     packageManage.once('close', this.clientClose(uid));
 

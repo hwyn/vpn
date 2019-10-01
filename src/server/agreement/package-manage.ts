@@ -9,6 +9,7 @@ const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
 const HEARTBEAT = 4;
+const TIMEOUT = 5;
 
 const MAX_SERIAL = Math.pow(2, 16);
 /**
@@ -100,6 +101,7 @@ export class PackageManage extends EventEmitter {
 
   private sendSt: any;
   private timeout: number = 1000;
+  private timeouted: boolean = false;
   private clearTimeout: any;
 
   private openHearbeat: boolean = false;
@@ -131,10 +133,15 @@ export class PackageManage extends EventEmitter {
   }
 
   private factoryTimout() {
+    if (this.clearTimeout) {
+      return ;
+    }
     let si = setTimeout(() => {
-      this.targetStatus = CLOSE;
-      this.emitAsync('timeout');
-      this.destroy(new Error('socket timeout'));
+      this.timeouted = true;
+      this.splitCacheBufferArray = [];
+      this.splitMap.clear();
+      this.splitCacheBuffer = Buffer.alloc(0);
+      this.stick(this.resetSerial(), TIMEOUT);
       this.clearTimeout = null;
     }, this.timeout);
 
@@ -142,6 +149,13 @@ export class PackageManage extends EventEmitter {
       this.clearTimeout = null;
       clearTimeout(si);
     }
+  }
+
+  private resetSerial() {
+    this.splitCacheBufferArray = [];
+    this.splitMap.clear();
+    this.splitCacheBuffer = Buffer.alloc(0);
+    return Buffer.from(this.splitSerial.toString());
   }
 
   /**
@@ -195,14 +209,27 @@ export class PackageManage extends EventEmitter {
     return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
-  private eventSwitch(type: number, buffer?: Buffer) {
-    this.targetStatus = type;
+  private eventSwitch(type: number, buffer: Buffer) {
+    this.targetStatus = [TIMEOUT, HEARTBEAT].includes(type) ? this.targetStatus : type;
     if (type === HEARTBEAT) {
       const { type: targetStatus } = this.readPackageType(buffer);
       this.targetStatus = targetStatus;
     }
-    if (this.targetStatus !== DATE) {
+
+    if (this.targetStatus !== DATE && type !== TIMEOUT) {
       this.statusSync(true);
+    }
+
+    if (type === TIMEOUT) {
+      this.stickCacheBufferArray = [];
+      this.stickSerial = parseInt(buffer.toString());
+      this.timeouted = true;
+      if (this.localhostStatus === DATE) {
+        this.destroy(new Error('socket timeout'));
+      } else {
+        const buffer = this.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+        this.stick(buffer, HEARTBEAT);
+      }
     }
   }
 
@@ -215,7 +242,6 @@ export class PackageManage extends EventEmitter {
   private splitMerge(buffer: Buffer) {
     let splitBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
     const size = SERIAL_SIZE + LENGTH_SIZE;
-    let a;
     while (splitBuffer.length > size) {
       const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
       if (packageSize > packageBuffer.length) {
@@ -223,7 +249,6 @@ export class PackageManage extends EventEmitter {
       }
       this.splitMap.set(serial, data);
       splitBuffer = splitBuffer.slice(packageSize);
-      a= serial;
     }
     this.splitCacheBuffer = splitBuffer;
   }
@@ -243,6 +268,9 @@ export class PackageManage extends EventEmitter {
     }
 
     if (targetStatus === CLOSE) {
+      if (this.timeouted) {
+        this.stick(Buffer.alloc(0), localhostStatus);
+      }
       this.heartbeatSt && clearTimeout(this.heartbeatSt);
     }
 
@@ -258,15 +286,23 @@ export class PackageManage extends EventEmitter {
 
   // 240e:39a:354:8740:e095:6cbc:bb29:7901
   stick(data: Buffer, type?: number) {
+    if (this.timeouted && (!type || type === DATE)) {
+      this.stickCacheBufferArray = [];
+      return ;
+    }
+
     if (!Buffer.isBuffer(data)) {
       return ;
     }
+
     let sendDate = Buffer.alloc(0);
     const remainingArray: any[] | Buffer[] = [];
+
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
       this.shard.splitData(this.writePaackageType(type || DATE, data))
     );
+
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
       sendDate = BufferUtil.concat(sendDate, buffer);
       if (sendDate.length >= this.maxSize) {
@@ -278,9 +314,8 @@ export class PackageManage extends EventEmitter {
       }
     });
     this.stickCacheBufferArray = remainingArray;
-    if (!this.sendSt) {
-      this.sendSt = setTimeout(() => this.directly());
-    }
+    this.sendSt && clearTimeout(this.sendSt);
+    this.sendSt = setTimeout(() => this.directly());
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void, uid?: string) {
@@ -294,9 +329,9 @@ export class PackageManage extends EventEmitter {
       this.splitSerial++;
     }
 
-    if (this.splitMap.size !== 0 && !this.clearTimeout) {
+    if (this.splitMap.size !== 0) {
       this.factoryTimout();
-    } else if (this.splitMap.size === 0 && this.clearTimeout) {
+    } else if (this.clearTimeout) {
       this.clearTimeout();
     }
 
@@ -309,7 +344,7 @@ export class PackageManage extends EventEmitter {
       if (splitCount === currentCount) {
         const { type, data: concatBufffer } = this.readPackageType(BufferUtil.concat(...cacheArray));
         if (type === DATE) {
-          if (this.localhostStatus !== CLOSE) {
+          if (this.localhostStatus !== CLOSE && !this.timeouted) {
             callback ? callback(concatBufffer) : null;
             this.emitAsync('data', concatBufffer);
           }
@@ -325,12 +360,15 @@ export class PackageManage extends EventEmitter {
 
   end() {
     this.localhostStatus = END;
+    // debugger;
     this.statusSync();
   }
 
   close() {
     this.localhostStatus = CLOSE;
-    this.statusSync();
+    if (this.splitMap.size === 0) {
+      this.statusSync();
+    }
   }
 
   error(error: Error) {
@@ -339,7 +377,6 @@ export class PackageManage extends EventEmitter {
   }
 
   destroy(error?: Error) {
-    this.targetStatus = CLOSE;
     if (error) {
       this.emitAsync('error', error);
     } else {
