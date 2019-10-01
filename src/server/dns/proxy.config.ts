@@ -3,12 +3,12 @@ import { hasOwnProperty } from '../util';
 import { LOCALHOST_ADDRESS } from '../constant';
 
 const proxy = {
-  // '*.baidu.com': LOCALHOST_ADDRESS,
-  // '*.bdstatic.com': LOCALHOST_ADDRESS,
-  '*.bilibili.com': LOCALHOST_ADDRESS,
-  '*.acgvideo.com': LOCALHOST_ADDRESS,
-  '*.smtcdns.net': LOCALHOST_ADDRESS,
-  '*.hdslb.com': LOCALHOST_ADDRESS,
+  '*.baidu.com': LOCALHOST_ADDRESS,
+  '*.bdstatic.com': LOCALHOST_ADDRESS,
+  // '*.bilibili.com': LOCALHOST_ADDRESS,
+  // '*.acgvideo.com': LOCALHOST_ADDRESS,
+  // '*.smtcdns.net': LOCALHOST_ADDRESS,
+  // '*.hdslb.com': LOCALHOST_ADDRESS,
   // '*': LOCALHOST_ADDRESS,
 };
 
@@ -53,8 +53,8 @@ export const getProxyAddress = (questionName: string, domain: DomainNameObject):
     }
   }
 
-  if (rdata && type == 1 && kClass === 1) {
-    return { ...domain, rdata } as DomainNameObject;
+  if (!rdata && type == 1 && kClass === 1) {
+    return { ...domain, rdata: encodeAddress(LOCALHOST_ADDRESS) } as DomainNameObject;
   }
   return domain.type === 28 ? false : domain;
 }

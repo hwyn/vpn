@@ -18,9 +18,6 @@ export class PackageManage extends EventEmitter {
   }
 
   distribute(data: Buffer) {
-    if (data.length === 0) {
-      console.log(`----------stop---destroy---------------`);
-    }
     this.manage.split(data, undefined, this.uid);
   }
 
@@ -37,7 +34,7 @@ export class PackageManage extends EventEmitter {
   }
 
   error(error: Error) {
-    console.log(`--------${this.uid}-----`, error);
+    console.log(`--------${this.uid}-----`, error.message);
     this.manage.error(error);
   }
 

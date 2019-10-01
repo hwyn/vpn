@@ -146,14 +146,16 @@ export class PackageManage extends EventEmitter {
       clearTimeout(this.heartbeatSt);
     }
 
-    if (this.targetStatus === CLOSE) {
+    if (this.destroyed) {
       return ;
     }
 
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
-      const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
-      this.stick(buffer, HEARTBEAT);
+      if (!this.destroyed) {
+        const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+        this.stick(buffer, HEARTBEAT);
+      }
     }, this.heartbeatTimer);
   }
 
@@ -267,11 +269,8 @@ export class PackageManage extends EventEmitter {
       this.stick(Buffer.alloc(0), localhostStatus);
     }
 
-    if (targetStatus === CLOSE) {
-      if (this.timeouted) {
-        this.stick(Buffer.alloc(0), localhostStatus);
-      }
-      this.heartbeatSt && clearTimeout(this.heartbeatSt);
+    if (targetStatus === CLOSE && this.timeouted) {
+      this.stick(Buffer.alloc(0), localhostStatus);
     }
 
     if (localhostStatus !== targetStatus) {
@@ -409,5 +408,9 @@ export class PackageManage extends EventEmitter {
     if (val > MAX_SERIAL - 1) {
       this._splitSerial = 0;
     }
+  }
+
+  get destroyed() {
+    return this.targetStatus === this.localhostStatus && this.localhostStatus === CLOSE;
   }
 }

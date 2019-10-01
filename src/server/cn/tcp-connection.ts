@@ -26,7 +26,6 @@ export class TcpConnection extends ProxyBasic {
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
     } else {
-      console.log(`----------stop---${uid}---------------`);
       this.send(PackageUtil.bindUid(uid, Buffer.alloc(0)));
     }
   };
