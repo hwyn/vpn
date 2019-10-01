@@ -25,10 +25,10 @@ export class TcpConnection extends ProxyBasic {
     const clientSocket = this.socketMap.get(uid);
     if (clientSocket) {
       clientSocket.emitSync('agent', buffer);
-    } 
-    // else {
-    //   this.notExistUid(uid, buffer);
-    // }
+    } else {
+      console.log(`----------stop---${uid}---------------`);
+      this.send(PackageUtil.bindUid(uid, Buffer.alloc(0)));
+    }
   };
 
   connectionListener = (uid: string, clientSocket: ProxySocket) => (buffer: Buffer) => {

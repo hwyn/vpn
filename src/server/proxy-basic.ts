@@ -18,39 +18,12 @@ export abstract class ProxyBasic extends UdpServerBasic {
     super();
   }
 
-
-  /**
-   * 没有检测到存在当前uid的连接
-   * @param uid 
-   */
-  public notExistUid(uid: string, buffer: Buffer) {
-    if (this.eventCommunication) {
-      this.eventCommunication.createStopResponse(this.socketID, uid);
-    }
-  }
-
-  /**
-   * 停止当前连接
-   */
-  public stopClient(uid: string) {
-    const clientSocket = this.socketMap.get(uid);
-    if (clientSocket) {
-      console.log(`----${this.serverName}---stop-------${uid}------`);
-      if (!clientSocket.destroyed) {
-        clientSocket.destroy(new Error('socket stop'));
-      } else {
-        this.clientClose(uid)();
-      }
-    }
-  }
-
   /**
    * 初始化tcp 事件通信
    * @param eventCommunication 
    */
   protected initEventCommunication(eventCommunication: EventCommunication) {
     this.eventCommunication = eventCommunication;
-    this.eventCommunication.on('link-stop', (uid: string) => this.stopClient(uid));
     this.eventCommunication.on('error', (error: Error) => console.log(error));
     this.eventCommunication.on('close', () => {
       this.eventCommunication = null;

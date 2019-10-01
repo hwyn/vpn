@@ -61,16 +61,6 @@ export class EventCommunication extends ProxyEventEmitter {
     return this.createHeader(uid, type);
   }
   
-  createStopResponse(socketID: string, uid: string) {
-    const socketBuffer = BufferUtil.writeGrounUInt([socketID.length], [8]);
-    const header = this.createEvent(uid, STOP);
-    this.write(BufferUtil.concat(header, socketBuffer, socketID));
-  }
-
-  unStopResponse(uid: string, body: Buffer) {
-    this.emitAsync('link-stop', uid, body);
-  }
-  
   createLinkEror =  (uid: string) => () => {
     this.write(this.createEvent(uid, LINKERROR));
   }
@@ -85,7 +75,6 @@ export class EventCommunication extends ProxyEventEmitter {
       case LINK: this.parseLink(uid, body); break;
       case LINKSUCCES: this.emitAsync('link-success', { uid }); break;
       case LINKERROR: this.emitAsync('link-error', { uid }); break;
-      case STOP: this.unStopResponse(uid, body); break;
     }
   }
 

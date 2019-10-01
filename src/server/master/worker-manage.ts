@@ -3,7 +3,7 @@ import { EventEmitter, PackageUtil } from '../util';
 import { PROCESS_EVENT_TYPE } from '../constant';
 import { UdpServerBasic } from '../udp-server-basic';
 
-const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_SOCKETID, BIND_SOCKETID, NOT_SOCKETID_PROCESS, STOU_UID_LINK } = PROCESS_EVENT_TYPE;
+const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_SOCKETID, BIND_SOCKETID, NOT_SOCKETID_PROCESS } = PROCESS_EVENT_TYPE;
 
 export class WorkerManage extends EventEmitter {
   private uidSet: Set<string> = new Set();
@@ -34,13 +34,6 @@ export class WorkerManage extends EventEmitter {
     }
   }
 
-  private distributionStopUidLinkWorker({ uid, buffer }: any) {
-    const runWorker = manageList.getWorker(uid);
-    if (runWorker) {
-      runWorker.send({ event: STOU_UID_LINK, data: { uid, buffer } });
-    }
-  }
-
   private distributionWorker({ data }: any) {
     const dateBuffer = Buffer.from(data);
     const { socketID } = UdpServerBasic.unWriteSocketId(dateBuffer);
@@ -62,7 +55,6 @@ export class WorkerManage extends EventEmitter {
       case DELETE_SOCKETID: this.deleteSocketId(data); break;
       case UDP_REQUEST_MESSAGE: this.distributionRequestWorker(data);break;
       case UDP_RESPONSE_MESSAGE: this.distributionResponseWorker(data);break;
-      case STOU_UID_LINK: this.distributionStopUidLinkWorker(data); break;
     }
   }
 

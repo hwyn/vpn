@@ -88,6 +88,31 @@ class PackageShard {
  * ------------------------------------------------------------------------
  */
 export class PackageManage extends EventEmitter {
+  /**
+   * 写入发送数据类型
+   * @param type 类型
+   * @param data Buffer
+   */
+  static writePaackageType(type: number, data: Buffer) {
+    const typeBuffer = Buffer.alloc(8);
+    typeBuffer.writeUInt8(type << 5, 0);
+    return Buffer.concat([typeBuffer.slice(0, 3), data], 3 + data.length);
+  }
+
+  /**
+   * 解析收到数据类型
+   * @param buffer Buffer
+   */
+  static readPackageType(buffer: Buffer): { type: number, data: Buffer } {
+    const typeBuffer = Buffer.alloc(8);
+    const data = buffer.slice(3);
+    typeBuffer[0] = buffer[0];
+    typeBuffer[1] = buffer[1];
+    typeBuffer[2] = buffer[2];
+    const type = typeBuffer.readUInt8(0) >> 5;
+    return { type, data };
+  }
+
   private _stickSerial: number = 0;
   private _splitSerial: number = 0;
   private stickCacheBufferArray: Buffer[] = [];
@@ -127,7 +152,7 @@ export class PackageManage extends EventEmitter {
 
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
-      const buffer = this.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+      const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
       this.stick(buffer, HEARTBEAT);
     }, this.heartbeatTimer);
   }
@@ -159,31 +184,6 @@ export class PackageManage extends EventEmitter {
   }
 
   /**
-   * 写入发送数据类型
-   * @param type 类型
-   * @param data Buffer
-   */
-  private writePaackageType(type: number, data: Buffer) {
-    const typeBuffer = Buffer.alloc(8);
-    typeBuffer.writeUInt8(type << 5, 0);
-    return Buffer.concat([typeBuffer.slice(0, 3), data], 3 + data.length);
-  }
-
-  /**
-   * 解析收到数据类型
-   * @param buffer Buffer
-   */
-  private readPackageType(buffer: Buffer): { type: number, data: Buffer } {
-    const typeBuffer = Buffer.alloc(8);
-    const data = buffer.slice(3);
-    typeBuffer[0] = buffer[0];
-    typeBuffer[1] = buffer[1];
-    typeBuffer[2] = buffer[2];
-    const type = typeBuffer.readUInt8(0) >> 5;
-    return { type, data };
-  }
-
-  /**
    * 发送出去的数据添加标志信息
    * @param data Buffer
    */
@@ -212,7 +212,7 @@ export class PackageManage extends EventEmitter {
   private eventSwitch(type: number, buffer: Buffer) {
     this.targetStatus = [TIMEOUT, HEARTBEAT].includes(type) ? this.targetStatus : type;
     if (type === HEARTBEAT) {
-      const { type: targetStatus } = this.readPackageType(buffer);
+      const { type: targetStatus } = PackageManage.readPackageType(buffer);
       this.targetStatus = targetStatus;
     }
 
@@ -227,7 +227,7 @@ export class PackageManage extends EventEmitter {
       if (this.localhostStatus === DATE) {
         this.destroy(new Error('socket timeout'));
       } else {
-        const buffer = this.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+        const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
         this.stick(buffer, HEARTBEAT);
       }
     }
@@ -300,7 +300,7 @@ export class PackageManage extends EventEmitter {
 
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(this.writePaackageType(type || DATE, data))
+      this.shard.splitData(PackageManage.writePaackageType(type || DATE, data))
     );
 
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
@@ -319,6 +319,9 @@ export class PackageManage extends EventEmitter {
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void, uid?: string) {
+    if (buffer.length === 0) {
+      return this.destroy();
+    }
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
@@ -342,7 +345,7 @@ export class PackageManage extends EventEmitter {
       splitArray.push(item);
       cacheArray.push(data);
       if (splitCount === currentCount) {
-        const { type, data: concatBufffer } = this.readPackageType(BufferUtil.concat(...cacheArray));
+        const { type, data: concatBufffer } = PackageManage.readPackageType(BufferUtil.concat(...cacheArray));
         if (type === DATE) {
           if (this.localhostStatus !== CLOSE && !this.timeouted) {
             callback ? callback(concatBufffer) : null;
@@ -380,6 +383,8 @@ export class PackageManage extends EventEmitter {
     if (error) {
       this.emitAsync('error', error);
     } else {
+      this.targetStatus = CLOSE;
+      this.resetSerial();
       this.emitAsync('end');
     }
   }
