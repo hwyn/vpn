@@ -139,6 +139,7 @@ export class PackageManage extends EventEmitter {
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.openHearbeat = openHearbeat || false;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
+    this.on('_close', () => this.emitAsync('close'));
   }
 
   private factoryHeartbeat() {
@@ -155,6 +156,8 @@ export class PackageManage extends EventEmitter {
       if (!this.destroyed) {
         const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
         this.stick(buffer, HEARTBEAT);
+      } else {
+        this.emitAsync('_close');
       }
     }, this.heartbeatTimer);
   }
@@ -279,7 +282,7 @@ export class PackageManage extends EventEmitter {
       }
     } else if (localhostStatus === targetStatus && localhostStatus === CLOSE) {
       this.clearTimeout && this.clearTimeout();
-      this.emitAsync('close');
+      this.emitAsync('_close');
     }
   }
 
