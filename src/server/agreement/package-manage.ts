@@ -148,7 +148,7 @@ export class PackageManage extends EventEmitter {
     }
 
     if (this.destroyed) {
-      return ;
+      return this.emitAsync('_close');
     }
 
     this.heartbeatSt = setTimeout(() => {

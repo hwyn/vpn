@@ -12,7 +12,7 @@ export const CLIENT_UDP_INITIAL_PORT: number = 6800;
 // 服务端udp初始监听端口
 export const SERVER_UDP_INITIAL_PORT: number = 6900;
 // 客户端代理 最大udp
-export const CLIENT_MAX_UDP_SERVER: number = 4;
+export const CLIENT_MAX_UDP_SERVER: number = 3;
 // 服务端代理 最大udp
 export const SERVER_MAX_UDP_SERVER: number = 3;
 // 客户端tcp http监听端口
@@ -22,7 +22,7 @@ export const CLIENT_TCP_HTTPS_PORT: number = 443;
 // 服务端tcp 监听端口
 export const SERVER_TCP_PORT: number = 8000;
 // 数据包最大size
-export const PACKAGE_MAX_SIZE: number = 4500;
+export const PACKAGE_MAX_SIZE: number = 3980;
 // 客户端 dns 地址
 export const CN_DNS_ADDRESS = '192.168.1.1';
 // 服务端 dns 地址
@@ -36,14 +36,4 @@ export const PROCESS_EVENT_TYPE = {
   BIND_SOCKETID: 'bind-socket-id',
   NOT_UID_PROCESS: 'not-uid-process',
   NOT_SOCKETID_PROCESS: 'not-socket-process',
-  STOU_UID_LINK: 'stor-uid-link',
-};
-
-// socket通讯事件
-export const COMMUNICATION_EVENT = {
-  LINK: 0,
-  DATA: 1, 
-  CLOSE: 2, 
-  ERROR: 3, 
-  END: 4,
 };
