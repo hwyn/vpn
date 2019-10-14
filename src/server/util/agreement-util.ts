@@ -1,8 +1,8 @@
-import { EventEmitter } from '../util/event-emitter';
-import { ProxySocket } from '../net-util/proxy-socket';
+import { EventEmitter } from '../net-util/event-emitter';
+import { ProxyTcpSocket } from '../net-util/proxy-tcp-socket';
 import { ProxyTcp } from '../net-util/proxy-tcp';
 import { uuid } from '../util/tools';
-import { BufferUtil } from '../util/buffer-util';
+import { BufferUtil } from '../net-util/buffer-util';
 import {
   SERVER_UDP_INITIAL_PORT,
   SERVER_MAX_UDP_SERVER,
@@ -75,15 +75,15 @@ export class AgreementUtil extends EventEmitter {
 
 export class AgreementClientUtil extends AgreementUtil {
   private socketID: string;
-  private socket: ProxySocket
-  constructor(private ip: string, private port: number, private connectListener: (socket: ProxySocket, clientInfo?: any) => void) {
+  private socket: ProxyTcpSocket
+  constructor(private ip: string, private port: number, private connectListener: (socket: ProxyTcpSocket, clientInfo?: any) => void) {
     super();
     this.createSocketClient();
   }
 
   private createSocketClient() {
     this.socketID = uuid();
-    this.socket = ProxySocket.createSocketClient(this.ip, this.port, true);
+    this.socket = ProxyTcpSocket.createSocketClient(this.ip, this.port, true);
     this.socket.once('connect', () => this.initEvent());
     this.socket.once('close', () => {
       this.emitAsync('close');
@@ -109,12 +109,12 @@ export class AgreementClientUtil extends AgreementUtil {
 
 export class AgreementServerUtil extends AgreementUtil {
   private server: ProxyTcp;
-  constructor(private port: number, private connectListener: (socket: ProxySocket, clientInfo?: any) => void) {
+  constructor(private port: number, private connectListener: (socket: ProxyTcpSocket, clientInfo?: any) => void) {
     super();
     this.server = ProxyTcp.createTcpServer(port, this._connectListener.bind(this), true);
   }
 
-  private initEvent(socket: ProxySocket) {
+  private initEvent(socket: ProxyTcpSocket) {
     const dataEvent = this.unData.bind(this);
     socket.on('data', dataEvent);
     this.once('client-hello', (info: any) => {
@@ -125,7 +125,7 @@ export class AgreementServerUtil extends AgreementUtil {
     });
   }
 
-  private _connectListener(socket: ProxySocket) {
+  private _connectListener(socket: ProxyTcpSocket) {
     this.initEvent(socket);
   }
 }

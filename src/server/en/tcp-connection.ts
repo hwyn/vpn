@@ -1,8 +1,8 @@
-import { ProxySocket } from '../net-util';
+import { ProxyTcpSocket } from '../net-util';
 import { PackageManage, PackageUtil, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
 import { getAddress } from './domain-to-address';
-import { LOCALHOST_ADDRESS } from '../constant';
+import { LOCALHOST_ADDRESS, SERVER_TYPE } from '../constant';
 
 export class TcpConnection extends ProxyBasic {
   constructor(socketID: string) {
@@ -12,7 +12,7 @@ export class TcpConnection extends ProxyBasic {
   /**
    * 初始化响应udp列表
    * @param host string
-   * @param initialPort number 
+   * @param initialPort number
    * @param maxClientNumber number
    */
   public initUdpClient(host: string, initialPort: number, maxClientNumber: number) {
@@ -21,19 +21,12 @@ export class TcpConnection extends ProxyBasic {
 
   /**
    * 创建tcp事件通讯
-   * @param eventTcp ProxySocket
+   * @param eventTcp ProxyTcpSocket
    */
-  public createEventTcp(eventTcp: ProxySocket) {
+  public createEventTcp(eventTcp: ProxyTcpSocket) {
     this.initEventCommunication(new EventCommunication(eventTcp));
     this.eventCommunication.on('link', this.callEvent());
   }
-
-  /**
-   * 发送事件通讯
-   */
-  protected responseEvent = (tcpEvent: ProxySocket) => (buffer: Buffer[]) => {
-    tcpEvent.write(buffer[0]);
-  };
 
   /**
    * 接收到客户端提发送数据
@@ -48,8 +41,8 @@ export class TcpConnection extends ProxyBasic {
     }
   };
 
-  connectionListener = (uid: string, clientSocket: ProxySocket) => async() => {
-    const packageManage = new PackageManage(uid, 'server');
+  connectionListener = (uid: string, clientSocket: ProxyTcpSocket) => async() => {
+    const packageManage = new PackageManage(uid, SERVER_TYPE.SERVER);
     
     this.socketMap.set(uid, clientSocket);
 
@@ -79,7 +72,7 @@ export class TcpConnection extends ProxyBasic {
       if (address === LOCALHOST_ADDRESS || (address === '127.0.0.1' && [80, 443].includes(port))) {
         throw new Error(`address is ${LOCALHOST_ADDRESS}`);
       }
-      const clientSocket = ProxySocket.createSocketClient(address, port);
+      const clientSocket = ProxyTcpSocket.createSocketClient(address, port);
       clientSocket.once('connect', this.connectionListener(uid, clientSocket));
       clientSocket.once('connect', eventCommunication.createLinkSuccess(uid));
       clientSocket.once('connect-error', this.eventCommunication.createLinkEror(uid));

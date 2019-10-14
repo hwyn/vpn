@@ -1,10 +1,10 @@
-import { EventEmitter } from '../util/event-emitter';
-import { BufferUtil } from '../util/buffer-util';
+import { EventEmitter } from './event-emitter';
+import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE } from '../constant';
 
 const SERIAL_SIZE = 8;
 const LENGTH_SIZE = 32;
-const DATE = 0;
+const DATA = 0;
 const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
@@ -36,7 +36,7 @@ class PackageShard {
       const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, LENGTH_SIZE]) as number[];
       const packageSize = titleLength + length;
       const packageBuffer = _buffer.slice(titleLength, packageSize);
-      return { 
+      return {
         data: packageBuffer,
         currentCount: currentCount,
         splitCount: splitCount, 
@@ -87,7 +87,7 @@ class PackageShard {
  *                                            | count | countCurrent | data
  * ------------------------------------------------------------------------
  */
-export class PackageManage extends EventEmitter {
+export class ConnectionManage extends EventEmitter {
   /**
    * 写入发送数据类型
    * @param type 类型
@@ -120,20 +120,20 @@ export class PackageManage extends EventEmitter {
   private splitCacheBuffer: Buffer = Buffer.alloc(0);
   private splitMap: Map<number, Buffer> = new Map();
   private splitCacheBufferArray: Buffer[] = [];
-  private shard: PackageShard;
-  private titleSize = SERIAL_SIZE + LENGTH_SIZE;
-  private maxSize: number;
+  private shard: PackageShard; // 包组合工具
+  private titleSize = SERIAL_SIZE + LENGTH_SIZE; // 包头部长度
+  private maxSize: number; // 包最大长度
 
-  private sendSt: any;
-  private timeout: number = 1000;
-  private timeouted: boolean = false;
-  private clearTimeout: any;
+  private sendSt: any; // 发送异步
+  private timeout: number = 1000; // 丢包延迟同步信息时间
+  private timeouted: boolean = false; // 丢包状态
+  private clearTimeout: any; // 丢包异步
 
-  private openHearbeat: boolean = false;
-  private heartbeatTimer: number = 15000;
-  private heartbeatSt: any;
-  private localhostStatus: number = DATE;
-  private targetStatus: number = DATE;
+  private openHearbeat: boolean = false; // 开启心跳检测
+  private heartbeatTimer: number = 15000; // 心跳检测时间
+  private heartbeatSt: any; // 心跳检测异步
+  private localhostStatus: number = DATA; // 本地连接状态
+  private targetStatus: number = DATA; // 远程连接状态
   constructor(openHearbeat?: boolean, maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
@@ -154,7 +154,7 @@ export class PackageManage extends EventEmitter {
     this.heartbeatSt = setTimeout(() => {
       this.heartbeatSt = null;
       if (!this.destroyed) {
-        const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+        const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
         this.stick(buffer, HEARTBEAT);
       } else {
         this.emitAsync('_close');
@@ -181,6 +181,7 @@ export class PackageManage extends EventEmitter {
     }
   }
 
+  // 重置包序列号
   private resetSerial() {
     this.splitCacheBufferArray = [];
     this.splitMap.clear();
@@ -217,24 +218,22 @@ export class PackageManage extends EventEmitter {
   private eventSwitch(type: number, buffer: Buffer) {
     this.targetStatus = [TIMEOUT, HEARTBEAT].includes(type) ? this.targetStatus : type;
     if (type === HEARTBEAT) {
-      const { type: targetStatus } = PackageManage.readPackageType(buffer);
+      const { type: targetStatus } = ConnectionManage.readPackageType(buffer);
       this.targetStatus = targetStatus;
     }
-
-    if (this.targetStatus !== DATE && type !== TIMEOUT) {
-      this.statusSync(true);
-    }
-
+    
     if (type === TIMEOUT) {
       this.stickCacheBufferArray = [];
       this.stickSerial = parseInt(buffer.toString());
       this.timeouted = true;
-      if (this.localhostStatus === DATE) {
+      if (this.localhostStatus === DATA) {
         this.destroy(new Error('socket timeout'));
       } else {
-        const buffer = PackageManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+        const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
         this.stick(buffer, HEARTBEAT);
       }
+    } else if (this.targetStatus !== DATA) {
+      this.statusSync(true);
     }
   }
 
@@ -266,18 +265,26 @@ export class PackageManage extends EventEmitter {
     this.sendSt = null;
   }
 
+  /**
+   * 状态同步
+   * @param isTargetChange 是否是远程同步状态
+   */
   private statusSync(isTargetChange?: boolean) {
     const { localhostStatus, targetStatus } = this;
-    if (!isTargetChange && localhostStatus !== DATE) {
+    // 本地状态改变 并且 本地状态不是 data 发送状态同步信息
+    if (!isTargetChange && localhostStatus !== DATA) {
       this.stick(Buffer.alloc(0), localhostStatus);
     }
 
+    // 远程状态是CLOSE 并且 本地是丢包状态 发送状态同步
     if (targetStatus === CLOSE && this.timeouted) {
       this.stick(Buffer.alloc(0), localhostStatus);
     }
 
+    // 状态不一致
     if (localhostStatus !== targetStatus) {
-      if (localhostStatus === DATE && [END, ERROR].includes(targetStatus)) {
+      // 本地状态为date 远程状态为end 或者 error
+      if (localhostStatus === DATA && [END, ERROR].includes(targetStatus)) {
         targetStatus === ERROR ? this.emitAsync('error') : this.emitAsync('end');
       }
     } else if (localhostStatus === targetStatus && localhostStatus === CLOSE) {
@@ -288,7 +295,7 @@ export class PackageManage extends EventEmitter {
 
   // 240e:39a:354:8740:e095:6cbc:bb29:7901
   stick(data: Buffer, type?: number) {
-    if (this.timeouted && (!type || type === DATE)) {
+    if (this.timeouted && (!type || type === DATA)) {
       this.stickCacheBufferArray = [];
       return ;
     }
@@ -302,7 +309,7 @@ export class PackageManage extends EventEmitter {
 
     this.stickCacheBufferArray = [].concat(
       this.stickCacheBufferArray, 
-      this.shard.splitData(PackageManage.writePaackageType(type || DATE, data))
+      this.shard.splitData(ConnectionManage.writePaackageType(type || DATA, data))
     );
 
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
@@ -347,13 +354,11 @@ export class PackageManage extends EventEmitter {
       splitArray.push(item);
       cacheArray.push(data);
       if (splitCount === currentCount) {
-        const { type, data: concatBufffer } = PackageManage.readPackageType(BufferUtil.concat(...cacheArray));
-        if (type === DATE) {
-          if (this.localhostStatus !== CLOSE && !this.timeouted) {
-            callback ? callback(concatBufffer) : null;
-            this.emitAsync('data', concatBufffer);
-          }
-        } else {
+        const { type, data: concatBufffer } = ConnectionManage.readPackageType(BufferUtil.concat(...cacheArray));
+        if (type === DATA && this.localhostStatus !== CLOSE && !this.timeouted) {
+          callback ? callback(concatBufffer) : null;
+          this.emitAsync('data', concatBufffer);
+        } else if (type !== DATA) {
           this.eventSwitch(type, concatBufffer);
         }
         cacheArray = [];

@@ -1,7 +1,7 @@
 import cluster from 'cluster';
-import { EventEmitter, PackageUtil } from '../util';
+import { PackageUtil } from '../util';
 import { PROCESS_EVENT_TYPE } from '../constant';
-import { UdpServerBasic } from '../udp-server-basic';
+import { EventEmitter } from '../net-util/event-emitter';
 
 const { UDP_RESPONSE_MESSAGE, UDP_REQUEST_MESSAGE, DELETE_SOCKETID, BIND_SOCKETID, NOT_SOCKETID_PROCESS } = PROCESS_EVENT_TYPE;
 
@@ -36,7 +36,7 @@ export class WorkerManage extends EventEmitter {
 
   private distributionWorker({ data }: any) {
     const dateBuffer = Buffer.from(data);
-    const { socketID } = UdpServerBasic.unWriteSocketId(dateBuffer);
+    const { socketID } = PackageUtil.unWriteSocketId(dateBuffer);
     const runWorker = manageList.getWorker(socketID);
     if (!runWorker) {
       this.send({ event: NOT_SOCKETID_PROCESS, data: dateBuffer});

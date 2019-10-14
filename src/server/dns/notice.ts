@@ -1,4 +1,5 @@
-import { EventEmitter, hasOwnProperty } from '../util/index';
+import { hasOwnProperty } from '../util/index';
+import { EventEmitter } from '../net-util/event-emitter';
 
 export type DomainNameObject = {
   name: string,

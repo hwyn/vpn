@@ -1,16 +1,14 @@
 /**
  * Created by NX on 2019/8/25.
  */
-import { ProxyUdpServer  } from './net-util/proxy-udp';
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
-import { ProxySocket } from './net-util';
-import { EventCommunication } from './util';
-import { UdpServerBasic } from './udp-server-basic';
+import { ProxyTcpSocket } from './net-util';
+import { EventCommunication, PackageUtil } from './util';
+import { EventEmitter } from './net-util/event-emitter';
 
-export abstract class ProxyBasic extends UdpServerBasic {
+export abstract class ProxyBasic extends EventEmitter {
   protected eventCommunication: EventCommunication;
-  protected socketMap: Map<string, ProxySocket> =  new Map();
-  protected udpServerList: ProxyUdpServer[] = [];
+  protected socketMap: Map<string, ProxyTcpSocket> =  new Map();
   protected udpClientList: ProxyUdpSocket[] = [];
   protected addressList: { port: number, host: string }[] = [];
   private _cursor: number = 0;
@@ -27,7 +25,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
     this.eventCommunication.on('error', (error: Error) => console.log(error));
     this.eventCommunication.on('close', () => {
       this.eventCommunication = null;
-      this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.emitAsync('agentError'));
+      this.socketMap.forEach((clientSocket: ProxyTcpSocket) => clientSocket.emitAsync('agentError'));
       this.emitAsync('close', this.socketID);
     });
   }
@@ -52,7 +50,8 @@ export abstract class ProxyBasic extends UdpServerBasic {
    * @param uid 
    */
   private write(buffer: Buffer, clientCursor: number) {
-    this.udpClientList[clientCursor].write(UdpServerBasic.writeSocketID(this.socketID, buffer));
+    const sendBuffer = PackageUtil.writeSocketID(this.socketID, buffer);
+    this.udpClientList[clientCursor].write(sendBuffer);
   }
 
   /**
@@ -60,10 +59,10 @@ export abstract class ProxyBasic extends UdpServerBasic {
    */
   protected send(data: Buffer) {
     if (!this.eventCommunication) {
-      this.socketMap.forEach((clientSocket: ProxySocket) => clientSocket.destroy());
+      this.socketMap.forEach((clientSocket: ProxyTcpSocket) => clientSocket.destroy());
       return ;
     }
-    this.write(data, this.getCursor());
+    this.write(data, this.cursor);
   };
 
   /**
@@ -77,11 +76,7 @@ export abstract class ProxyBasic extends UdpServerBasic {
     }
   }
 
-  protected udpMessage(data: Buffer): void {
-    throw new Error("Method not implemented.");
-  }
-
-  getCursor() {
+  get cursor() {
     this._cursor++;
     if (this._cursor >= this.udpClientList.length) {
       this._cursor = 0;

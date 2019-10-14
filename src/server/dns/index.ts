@@ -5,6 +5,7 @@ import { getProxyAddress } from './proxy.config';
 import { CN_DNS_ADDRESS } from '../constant';
 
 // .replace(/([\S]+)/g, '0x$1,')
+const dnsAddress = Array.isArray(CN_DNS_ADDRESS) ? CN_DNS_ADDRESS[0] : CN_DNS_ADDRESS;
 
 class DnsServerConnection {
   private idToRinfoMap: Map<number, RemoteInfo> = new Map();
@@ -13,7 +14,7 @@ class DnsServerConnection {
     const notice = new Notice(data);
     if (notice.qr === 0) {
       this.idToRinfoMap.set(notice.transactionID, rinfo);
-      return dnsServer.write(data, 53, CN_DNS_ADDRESS);
+      return dnsServer.write(data, 53, dnsAddress);
     }
     const questionFirst = notice.questionDomainObject.domains[0];
     const answerDomainList: any = !questionFirst ? [] : notice.answerDomainObject.domains

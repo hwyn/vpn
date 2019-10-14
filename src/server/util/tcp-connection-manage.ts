@@ -1,13 +1,16 @@
 import { proxyProcess } from '../net-util/proxy-process';
 import { ProxyBasic } from '../proxy-basic';
-import { UdpServerBasic } from '../udp-server-basic';
-import { PROCESS_EVENT_TYPE } from '../constant';
+import { PROCESS_EVENT_TYPE, SERVER_TYPE } from '../constant';
+import { PackageUtil } from './package-util';
+import { createUdpServer, ProxyUdpServer } from '../net-util/proxy-udp';
+import { EventEmitter } from '../net-util/event-emitter';
 
 const { UDP_REQUEST_MESSAGE, UDP_RESPONSE_MESSAGE  } = PROCESS_EVENT_TYPE;
 
-export class TcpConnectionManage extends UdpServerBasic {
+export class TcpConnectionManage extends EventEmitter {
   private connection: Map<string, ProxyBasic> = new Map();
-  constructor(initialPort: number, maxServer: number, private type?: number) {
+  protected udpServerList: ProxyUdpServer[] = [];
+  constructor(initialPort: number, maxServer: number, private type?: string) {
     super();
     this.createUdpServer(initialPort, maxServer);
     this.initProxyProcess();
@@ -17,24 +20,50 @@ export class TcpConnectionManage extends UdpServerBasic {
    * 初始化进程监听
    */
   protected initProxyProcess() {
-    this.type === 0 ?  proxyProcess.on(UDP_RESPONSE_MESSAGE, this.switchMessage.bind(this)) : proxyProcess.on(UDP_REQUEST_MESSAGE, this.switchMessage.bind(this));
-  ;
+    const messageType = this.type === SERVER_TYPE.CLIENT ? UDP_RESPONSE_MESSAGE : UDP_REQUEST_MESSAGE;
+    proxyProcess.on(messageType, this.switchMessage.bind(this));
+  }
+
+  /**
+   * 创建udp 服务器监听
+   * @param initialPort 
+   * @param maxListenNumber 
+   */
+  protected createUdpServer(initialPort: number, maxListenNumber: number) {
+    this.udpServerList = new Array(maxListenNumber).fill(initialPort).map((item: number, index: number) => {
+      const udpServer = createUdpServer(item + index);
+      udpServer.on('data', this.udpMessage.bind(this));
+      return udpServer;
+    });
+    return this.udpServerList;
   }
 
   private async getConnecction(data: Buffer): Promise<any> {
-    const { socketID, buffer } = UdpServerBasic.unWriteSocketId(data);
+    const { socketID, buffer } = PackageUtil.unWriteSocketId(data);
     const tcpConnection = this.getTcpConnect(socketID);
     if (tcpConnection) return Promise.resolve({ tcpConnection, buffer });
     else return Promise.reject('tcpConnection not defined');
   }
 
+  private message({ tcpConnection, buffer }: { tcpConnection: any, buffer: Buffer }) {
+    if (this.type === SERVER_TYPE.CLIENT) {
+      tcpConnection.responseData()(buffer);
+    } else {
+      tcpConnection.requestData()(buffer);
+    }
+  }
+
   protected udpMessage(data: Buffer) {
-    const { socketID } = UdpServerBasic.unWriteSocketId(data);
-    this.emitAsync('udp-message', data);
+    const { socketID } = PackageUtil.unWriteSocketId(data);
+    if (this.type === SERVER_TYPE.CLIENT) {
+      proxyProcess.responseMessage(data);
+    } else {
+      proxyProcess.requestMessage(data);
+    }
   }
 
   protected switchMessage(data: Buffer) {
-    this.getConnecction(data).then(({ tcpConnection, buffer }) => this.emitAsync('message', tcpConnection, buffer));
+    this.getConnecction(data).then(this.message.bind(this));
   }
 
   public setTcpConnection(socketID: string, tcpConnection: ProxyBasic) {

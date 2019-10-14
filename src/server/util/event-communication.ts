@@ -1,7 +1,7 @@
-import { PackageUtil } from './package-separation';
-import { BufferUtil } from './buffer-util';
+import { PackageUtil } from './package-util';
+import { BufferUtil } from '../net-util/buffer-util';
 import { getHttpsClientHello, getHttp } from '.';
-import { ProxySocket } from '../net-util/proxy-socket';
+import { ProxyTcpSocket } from '../net-util/proxy-tcp-socket';
 import { ProxyEventEmitter } from '../net-util/proxy-event-emitter';
 import { LOCALHOST_ADDRESS } from '../constant';
 
@@ -12,7 +12,7 @@ const STOP = 6;
 
 export class EventCommunication extends ProxyEventEmitter {
   [x: string]: any;
-  constructor(private eventSocket: ProxySocket) {
+  constructor(private eventSocket: ProxyTcpSocket) {
     super(eventSocket);
     this.mappingFnNames = ['end', 'write'];
     this.associatedListener(['error', 'close'], true);

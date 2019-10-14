@@ -1,4 +1,4 @@
-import { isArray, isString, isBuffer, isNumber } from './tools';
+import { isArray, isString, isBuffer, isNumber } from '../util/tools';
 
 
 export class BufferUtil {

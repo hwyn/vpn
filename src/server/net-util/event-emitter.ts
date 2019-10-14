@@ -1,4 +1,4 @@
-import { isFunction, hasOwnProperty } from './tools';
+import { isFunction, hasOwnProperty } from '../util/tools';
 
 export type Handler = (...arg: any[]) => void;
 

@@ -1,4 +1,4 @@
-import { BufferUtil } from './buffer-util';
+import { BufferUtil } from '../net-util/buffer-util';
 
 export const getHttp = (buffer: Buffer) => {
   const match = buffer.toString().match(/([^\r\n]+)/g).filter((item: string) => /^Host: [\S]+$/.test(item))[0];

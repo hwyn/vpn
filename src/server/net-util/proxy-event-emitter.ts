@@ -1,4 +1,4 @@
-import { EventEmitter, Handler } from '../util/event-emitter';
+import { EventEmitter, Handler } from './event-emitter';
 import { isArray } from '../util/tools';
 
 export class ProxyEventEmitter extends EventEmitter {

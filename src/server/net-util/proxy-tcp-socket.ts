@@ -1,28 +1,28 @@
 import { createConnection, Socket } from 'net';
 import { ProxyEventEmitter } from './proxy-event-emitter';
-import { Handler } from '../util/event-emitter';
-import { PackageManage } from '../agreement/package-manage';
+import { Handler } from './event-emitter';
+import { ConnectionManage } from './connection';
 
-export class ProxySocket extends ProxyEventEmitter {
+export class ProxyTcpSocket extends ProxyEventEmitter {
   static pipeFns: string[] = ['destroy', 'address', 'close'];
   static interceptEvents: string[] = ['data', 'end', 'error', 'close', 'timeout', 'connect'];
-  static createSocketClient = (host: string, port: number, openPackage?: boolean): ProxySocket => {
-    return new ProxySocket(createConnection({ host, port }), openPackage);
+  static createSocketClient = (host: string, port: number, openPackage?: boolean): ProxyTcpSocket => {
+    return new ProxyTcpSocket(createConnection({ host, port }), openPackage);
   };
   public ended: boolean = false;
   private waitingWriteList: Buffer[] = [];
   private connecting: boolean = true;
-  private manage: PackageManage;
+  private manage: ConnectionManage;
   [x: string]: any;
 
   constructor(public socket: Socket, private openPackage?: boolean) {
-    super(socket, ProxySocket.pipeFns);
+    super(socket, ProxyTcpSocket.pipeFns);
     this.onInit();
     this.associatedListener(['data']);
     this.associatedListener(['end', 'close', 'connect'], true);
     this.mappingAttr(['localAddress', 'localPort', 'destroyed']);
     if (openPackage) {
-      this.manage = new PackageManage();
+      this.manage = new ConnectionManage();
       this.manage.on('send', this._write.bind(this));
       this.manage.on('timeout', () => this.end());
     }
@@ -59,8 +59,8 @@ export class ProxySocket extends ProxyEventEmitter {
     }
   }
 
-  pipe(proxySocket: ProxySocket | Socket) {
-    if (proxySocket instanceof ProxySocket) {
+  pipe(proxySocket: ProxyTcpSocket | Socket) {
+    if (proxySocket instanceof ProxyTcpSocket) {
       this.socket.pipe(proxySocket.socket);
     } else {
       this.socket.pipe(proxySocket);

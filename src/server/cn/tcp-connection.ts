@@ -1,7 +1,7 @@
-import { ProxySocket } from '../net-util';
+import { ProxyTcpSocket } from '../net-util';
 import { uuid, PackageUtil, PackageManage, EventCommunication } from '../util';
 import { ProxyBasic } from '../proxy-basic';
-import {  SERVER_IP } from '../constant';
+import {  SERVER_IP, SERVER_TYPE } from '../constant';
 
 
 export class TcpConnection extends ProxyBasic {
@@ -13,7 +13,7 @@ export class TcpConnection extends ProxyBasic {
     this.createUdpClient(SERVER_IP, initialPort, maxClientNumber);
   }
 
-  public createEventTcp(eventTcp: ProxySocket) {
+  public createEventTcp(eventTcp: ProxyTcpSocket) {
     this.initEventCommunication(new EventCommunication(eventTcp));
   }
 
@@ -30,15 +30,15 @@ export class TcpConnection extends ProxyBasic {
     }
   };
 
-  connectionListener = (uid: string, clientSocket: ProxySocket) => (buffer: Buffer) => {
-    const packageManage = new PackageManage(uid, 'client');
+  connectionListener = (uid: string, clientSocket: ProxyTcpSocket) => (buffer: Buffer) => {
+    const packageManage = new PackageManage(uid, SERVER_TYPE.CLIENT);
 
     this.socketMap.set(uid, clientSocket);
     
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
-    packageManage.once('end', () =>clientSocket.end());
+    packageManage.once('end', () => clientSocket.end());
     packageManage.once('error', (error: Error) => clientSocket.destroy(error));
     packageManage.once('close', this.clientClose(uid));
 
@@ -52,7 +52,7 @@ export class TcpConnection extends ProxyBasic {
     packageManage.write(buffer);
   };
 
-  callEvent = (port: number, clientSocket: ProxySocket) => (data: Buffer) => {
+  callEvent = (port: number, clientSocket: ProxyTcpSocket) => (data: Buffer) => {
     if (!this.eventCommunication) {
       return clientSocket.destroy(new Error('socket 连接失败'));
     }
@@ -66,7 +66,7 @@ export class TcpConnection extends ProxyBasic {
     });
   };
 
-  call = (port: number) => (clientSocket: ProxySocket) => {
+  call = (port: number) => (clientSocket: ProxyTcpSocket) => {
     clientSocket.once('data', this.callEvent(port, clientSocket));
   };
 }
