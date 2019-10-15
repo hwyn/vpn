@@ -5,13 +5,13 @@ import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket'
 import { ProxyTcpSocket } from './net-util';
 import { EventCommunication, PackageUtil } from './util';
 import { EventEmitter } from './net-util/event-emitter';
+import { ArrayLink, LinkNode } from './util/array-link';
 
 export abstract class ProxyBasic extends EventEmitter {
   protected eventCommunication: EventCommunication;
   protected socketMap: Map<string, ProxyTcpSocket> =  new Map();
-  protected udpClientList: ProxyUdpSocket[] = [];
-  protected addressList: { port: number, host: string }[] = [];
-  private _cursor: number = 0;
+  protected udpClientLink: ArrayLink<ProxyUdpSocket> = new ArrayLink();
+  protected udpClientSend: LinkNode<ProxyUdpSocket>;
   constructor(protected socketID: string, private serverName: string) {
     super();
   }
@@ -37,10 +37,11 @@ export abstract class ProxyBasic extends EventEmitter {
    * @param maxClientNumber 
    */
   protected createUdpClient(host: string, initialPort: number, maxClientNumber: number) {
-    this.udpClientList = new Array(maxClientNumber).fill(initialPort).map((item: number, index: number) => {
+    this.udpClientLink = new ArrayLink(new Array(maxClientNumber).fill(initialPort).map((item: number, index: number) => {
       return createSocketClient(host, item + index);
-    });
-    return this.udpClientList;
+    }));
+    this.udpClientSend = this.udpClientLink.get(0);
+    return this.udpClientLink;
   }
 
   /**
@@ -49,9 +50,10 @@ export abstract class ProxyBasic extends EventEmitter {
    * @param clientCursor
    * @param uid 
    */
-  private write(buffer: Buffer, clientCursor: number) {
+  private write(buffer: Buffer) {
     const sendBuffer = PackageUtil.writeSocketID(this.socketID, buffer);
-    this.udpClientList[clientCursor].write(sendBuffer);
+    this.udpClientSend.value.write(sendBuffer);
+    this.udpClientSend = this.udpClientSend.nextNode;
   }
 
   /**
@@ -62,7 +64,7 @@ export abstract class ProxyBasic extends EventEmitter {
       this.socketMap.forEach((clientSocket: ProxyTcpSocket) => clientSocket.destroy());
       return ;
     }
-    this.write(data, this.cursor);
+    this.write(data);
   };
 
   /**
@@ -74,13 +76,5 @@ export abstract class ProxyBasic extends EventEmitter {
       this.socketMap.delete(uid);
       console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
     }
-  }
-
-  get cursor() {
-    this._cursor++;
-    if (this._cursor >= this.udpClientList.length) {
-      this._cursor = 0;
-    }
-    return this._cursor;
   }
 }
