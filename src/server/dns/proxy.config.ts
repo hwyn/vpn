@@ -1,15 +1,16 @@
 import { DomainNameObject } from './notice';
-import { hasOwnProperty } from '../util';
 import { LOCALHOST_ADDRESS } from '../constant';
 
+const ignore = ['*.baidu.com', '*.bdstatic.com'];
+
 const proxy = {
-  '*.baidu.com': LOCALHOST_ADDRESS,
-  '*.bdstatic.com': LOCALHOST_ADDRESS,
-  // '*.bilibili.com': LOCALHOST_ADDRESS,
-  // '*.acgvideo.com': LOCALHOST_ADDRESS,
-  // '*.smtcdns.net': LOCALHOST_ADDRESS,
-  // '*.hdslb.com': LOCALHOST_ADDRESS,
-  // '*': LOCALHOST_ADDRESS,
+  // 'adservice.google.com': '127.128.0.69',
+  // 'ogs.google.com': '127.128.1.121',
+  // 'ssl.gstatic.com': '127.128.0.121',
+  // 'www.gstatic.com': '127.128.1.24',
+  // 'apis.google.com': '127.128.1.120',
+  // '*.google.com': '127.128.0.37',
+  '*': LOCALHOST_ADDRESS,
 };
 
 const encodeAddress = (address: string) => {
@@ -31,30 +32,39 @@ const decordAddress = (rdata: string) => {
   return address.join('.');
 }
 
-export const getProxyAddress = (questionName: string, domain: DomainNameObject): DomainNameObject | boolean => {
-  const { name, type, class: kClass } = domain;
-  const parts = questionName.split('.');
-  let rdata;
-  if (name === 'localhost' || /^\d{3}\.\d{3}\.\d{3}\.\d{3}$/.test(questionName) || domain.class !== 1) {
-    return domain;
-  }
-
-  if (hasOwnProperty(proxy, questionName)) {
-    rdata = encodeAddress(proxy[questionName]);
+const dimainIncludes = (domains: string[]) => (domain: string) => {
+  const parts = domain.split('.');
+  let address;
+  if (domains.includes(domain)) {
+    address = domain;
   } else {
     while (parts.length) {
       parts[0] = '*';
-      const address = proxy[parts.join('.')];
-      parts.shift();
-      if (address) {
-        rdata = encodeAddress(address);
+      if (domains.includes(parts.join('.'))) {
+        address = parts.join('.');
         break;
       }
+      parts.shift();
     }
   }
+  return address;
+}
 
-  if (!rdata && type == 1 && kClass === 1) {
-    return { ...domain, rdata: encodeAddress(LOCALHOST_ADDRESS) } as DomainNameObject;
+export const hasProxy = dimainIncludes(Object.keys(proxy));
+
+export const hasIgnore = dimainIncludes(ignore);
+
+export const getProxyAddress = (questionName: string, domain: DomainNameObject): DomainNameObject | boolean => {
+  const { type, class: kClass } = domain;
+  if (!!hasIgnore(questionName) || /^\d{3}\.\d{3}\.\d{3}\.\d{3}$/.test(questionName) || domain.class !== 1) {
+    return domain;
   }
+
+  let rdata;
+  const address = hasProxy(questionName);
+  if (type == 1 && kClass === 1 && !!address && (rdata = proxy[address])) {
+    return { ...domain, rdata: encodeAddress(rdata) } as DomainNameObject;
+  }
+
   return domain.type === 28 ? false : domain;
 }
