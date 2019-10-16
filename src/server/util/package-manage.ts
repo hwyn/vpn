@@ -13,7 +13,9 @@ export class PackageManage extends EventEmitter {
     this.manage.on('send', (data: Buffer) => this.emitAsync('send', data));
     this.manage.on('data', (data: Buffer) => this.emitAsync('data', data));
     this.manage.on('end', () => this.emitAsync('end'));
-    this.manage.on('error', (error: Error) => this.emitAsync('error', error));
+    this.manage.on('error', (error: Error) => {
+      this.emitAsync('error', error);
+    });
     this.manage.on('close', () => this.emitAsync('close'));
   }
 

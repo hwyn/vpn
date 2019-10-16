@@ -12,6 +12,7 @@ const HEARTBEAT = 4;
 const TIMEOUT = 5;
 
 const MAX_SERIAL = Math.pow(2, 16);
+
 /**
  * ----------------------------------------
  *  count | countCurrent | data
@@ -124,16 +125,21 @@ export class ConnectionManage extends EventEmitter {
   private titleSize = SERIAL_SIZE + LENGTH_SIZE; // 包头部长度
   private maxSize: number; // 包最大长度
 
-  private sendSt: any; // 发送异步
-  private timeout: number = 1000; // 丢包延迟同步信息时间
+  private errorMessage: string;
+  private localhostStatus: number = DATA; // 本地连接状态
+  private targetStatus: number = DATA; // 远程连接状态
+
+  private sendSetTimeout: () => void = this.factorySetTimeout(this.directly.bind(this));
+
   private timeouted: boolean = false; // 丢包状态
-  private clearTimeout: any; // 丢包异步
+  private lossTimer: number = 0; // 丢包延迟同步信息时间
+  private clearLossTimeout: any; // 丢包异步
+  private lossSetTimeout: () => any = this.factorySetTimeout(this.sendLossTimeout.bind(this), this.lossTimer);
 
   private openHearbeat: boolean = false; // 开启心跳检测
   private heartbeatTimer: number = 15000; // 心跳检测时间
-  private heartbeatSt: any; // 心跳检测异步
-  private localhostStatus: number = DATA; // 本地连接状态
-  private targetStatus: number = DATA; // 远程连接状态
+  private clearHeartbeatTimeout: () => any;
+  private heartbeatSetTimeout: () => any = this.factorySetTimeout(this.sendHeartbeatPackage.bind(this), this.heartbeatTimer);
   constructor(openHearbeat?: boolean, maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
@@ -142,42 +148,93 @@ export class ConnectionManage extends EventEmitter {
     this.on('_close', () => this.emitAsync('close'));
   }
 
-  private factoryHeartbeat() {
-    if (this.heartbeatSt !== null) {
-      clearTimeout(this.heartbeatSt);
-    }
-
-    if (this.destroyed) {
-      return this.emitAsync('_close');
-    }
-
-    this.heartbeatSt = setTimeout(() => {
-      this.heartbeatSt = null;
-      if (!this.destroyed) {
-        const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
-        this.stick(buffer, HEARTBEAT);
-      } else {
-        this.emitAsync('_close');
+  /**
+   * 延迟执行
+   * @param timer 
+   * @param callback 
+   */
+  private factorySetTimeout(callback: () => void, timer?: number) {
+    let st: any;
+    const _clearTimeout = () => {
+      if (st) {
+        clearTimeout(st);
+        st = null;
       }
-    }, this.heartbeatTimer);
+    }
+    return (...arg: any[]) => {
+      if (st) _clearTimeout();
+      st = setTimeout(() => {
+        callback.call(this, ...arg);
+        st = null;
+      }, timer);
+      return _clearTimeout;
+    }
   }
 
-  private factoryTimout() {
-    if (this.clearTimeout) {
-      return ;
+  /**
+   * 发送心跳检测包
+   */
+  private sendHeartbeatPackage() {
+    if (!this.destroyed) {
+      const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+      this.stick(buffer, HEARTBEAT);
+    } else {
+      this.emitAsync('_close');
     }
-    let si = setTimeout(() => {
-      this.timeouted = true;
-      this.splitCacheBufferArray = [];
-      this.splitMap.clear();
-      this.splitCacheBuffer = Buffer.alloc(0);
-      this.stick(this.resetSerial(), TIMEOUT);
-      this.clearTimeout = null;
-    }, this.timeout);
+  }
 
-    this.clearTimeout = () => {
-      this.clearTimeout = null;
-      clearTimeout(si);
+  /**
+   * 心跳检测信息
+   */
+  private messageHeartbeat(buffer: Buffer) {
+    const { type: targetStatus } = ConnectionManage.readPackageType(buffer);
+    this.targetStatus = targetStatus;
+    if (targetStatus === CLOSE && this.localhostStatus !== CLOSE) {
+      if (![DATA, CLOSE].includes(this.localhostStatus)) {
+        this.close();
+      } else if (this.errorMessage) {
+        this.error(new Error(this.errorMessage));
+      } else {
+        this.end();
+      }
+      return false;
+    }
+    return true;
+  }
+
+  private factoryHeartbeat() {
+    if (this.destroyed) {
+      this.clearHeartbeatTimeout && this.clearHeartbeatTimeout();
+      return this.emitAsync('_close');
+    }
+    this.clearHeartbeatTimeout = this.heartbeatSetTimeout();
+  }
+
+  /**
+   * 发送丢包信息
+   */
+  private sendLossTimeout() {
+    console.log(`--------TIMEOUT-------- ${this.localhostStatus} ----- ${this.targetStatus}`);
+    this.timeouted = true;
+    this.splitCacheBufferArray = [];
+    this.splitMap.clear();
+    this.splitCacheBuffer = Buffer.alloc(0);
+    this.stick(this.resetSerial(), TIMEOUT);
+    this.clearLossTimeout = null;
+  }
+
+  /**
+   * 传送丢包信息
+   */
+  private messageLoss(buffer: Buffer) {
+    this.stickCacheBufferArray = [];
+    this.stickSerial = parseInt(buffer.toString());
+    this.timeouted = true;
+    if (this.localhostStatus === DATA) {
+      this.destroy(new Error('socket loss package'));
+    } else {
+      const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
+      this.stick(buffer, HEARTBEAT);
     }
   }
 
@@ -215,24 +272,23 @@ export class ConnectionManage extends EventEmitter {
     return { serial, packageSize: packageSize, packageBuffer, data };
   }
 
+  /**
+   * 远程事件类型处理
+   * @param type event
+   * @param buffer Buffer
+   */
   private eventSwitch(type: number, buffer: Buffer) {
     this.targetStatus = [TIMEOUT, HEARTBEAT].includes(type) ? this.targetStatus : type;
-    if (type === HEARTBEAT) {
-      const { type: targetStatus } = ConnectionManage.readPackageType(buffer);
-      this.targetStatus = targetStatus;
+    if (type === HEARTBEAT && !this.messageHeartbeat(buffer)) {
+      return ;
     }
     
     if (type === TIMEOUT) {
-      this.stickCacheBufferArray = [];
-      this.stickSerial = parseInt(buffer.toString());
-      this.timeouted = true;
-      if (this.localhostStatus === DATA) {
-        this.destroy(new Error('socket timeout'));
-      } else {
-        const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
-        this.stick(buffer, HEARTBEAT);
-      }
+      this.messageLoss(buffer);
     } else if (this.targetStatus !== DATA) {
+      if (this.targetStatus === ERROR) {
+        this.errorMessage = buffer.toString();
+      }
       this.statusSync(true);
     }
   }
@@ -257,12 +313,14 @@ export class ConnectionManage extends EventEmitter {
     this.splitCacheBuffer = splitBuffer;
   }
   
+  /**
+   * 立即发送包
+   */
   private directly() {
     if (this.stickCacheBufferArray.length) {
       this.send(BufferUtil.concat(...this.stickCacheBufferArray));
       this.stickCacheBufferArray = [];
     }
-    this.sendSt = null;
   }
 
   /**
@@ -273,7 +331,8 @@ export class ConnectionManage extends EventEmitter {
     const { localhostStatus, targetStatus } = this;
     // 本地状态改变 并且 本地状态不是 data 发送状态同步信息
     if (!isTargetChange && localhostStatus !== DATA) {
-      this.stick(Buffer.alloc(0), localhostStatus);
+      let buffer = localhostStatus === ERROR ? Buffer.from(this.errorMessage) : Buffer.alloc(0);
+      this.stick(buffer, localhostStatus);
     }
 
     // 远程状态是CLOSE 并且 本地是丢包状态 发送状态同步
@@ -284,11 +343,11 @@ export class ConnectionManage extends EventEmitter {
     // 状态不一致
     if (localhostStatus !== targetStatus) {
       // 本地状态为date 远程状态为end 或者 error
-      if (localhostStatus === DATA && [END, ERROR].includes(targetStatus)) {
-        targetStatus === ERROR ? this.emitAsync('error') : this.emitAsync('end');
+      if (isTargetChange && localhostStatus === DATA && [END, ERROR].includes(targetStatus)) {
+        targetStatus === ERROR ? this.emitAsync('error', new Error(this.errorMessage)) : this.emitAsync('end');
       }
     } else if (localhostStatus === targetStatus && localhostStatus === CLOSE) {
-      this.clearTimeout && this.clearTimeout();
+      this.clearLossTimeout && this.clearLossTimeout();
       this.emitAsync('_close');
     }
   }
@@ -308,7 +367,7 @@ export class ConnectionManage extends EventEmitter {
     const remainingArray: any[] | Buffer[] = [];
 
     this.stickCacheBufferArray = [].concat(
-      this.stickCacheBufferArray, 
+      this.stickCacheBufferArray,
       this.shard.splitData(ConnectionManage.writePaackageType(type || DATA, data))
     );
 
@@ -323,14 +382,14 @@ export class ConnectionManage extends EventEmitter {
       }
     });
     this.stickCacheBufferArray = remainingArray;
-    this.sendSt && clearTimeout(this.sendSt);
-    this.sendSt = setTimeout(() => this.directly());
+    this.sendSetTimeout();
   }
 
   split(buffer: Buffer, callback?: (data: Buffer) => void, uid?: string) {
     if (buffer.length === 0) {
       return this.destroy();
     }
+
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
@@ -340,11 +399,11 @@ export class ConnectionManage extends EventEmitter {
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
     }
-
     if (this.splitMap.size !== 0) {
-      this.factoryTimout();
-    } else if (this.clearTimeout) {
-      this.clearTimeout();
+      !this.clearLossTimeout && (this.clearLossTimeout = this.lossSetTimeout());
+    } else if (this.clearLossTimeout) {
+      this.clearLossTimeout();
+      this.clearLossTimeout = null;
     }
 
     let cacheArray: any = [];
@@ -370,7 +429,6 @@ export class ConnectionManage extends EventEmitter {
 
   end() {
     this.localhostStatus = END;
-    // debugger;
     this.statusSync();
   }
 
@@ -383,16 +441,18 @@ export class ConnectionManage extends EventEmitter {
 
   error(error: Error) {
     this.localhostStatus = ERROR;
+    this.errorMessage = error.message;
     this.statusSync();
   }
 
   destroy(error?: Error) {
     if (error) {
       this.emitAsync('error', error);
+      setTimeout(() => this.localhostStatus !== CLOSE ? this.close() : null);
     } else {
       this.targetStatus = CLOSE;
       this.resetSerial();
-      this.emitAsync('end');
+      this.statusSync();
     }
   }
 

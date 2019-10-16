@@ -1,6 +1,6 @@
 import { getIPv4Address, PLATFORM, LOCSLHOST_DNS } from './util/os-util';
 // 采用多核部署
-export const IS_CLUSER: boolean = PLATFORM !== 'win32';
+export const IS_CLUSER: boolean = false; // PLATFORM !== 'win32';
 // 本机地址
 export const LOCALHOST_ADDRESS = getIPv4Address();
 // 客户端 ip地址
