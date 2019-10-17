@@ -1,7 +1,7 @@
 import { DomainNameObject } from './notice';
 import { LOCALHOST_ADDRESS } from '../constant';
 
-const ignore = ['*.baidu.com', '*.bdstatic.com'];
+const ignore = ['*.baidu.com', '*.bdstatic.com', '*.chat.bilibili.com'];
 
 const proxy = {
   // 'adservice.google.com': '127.128.0.69',

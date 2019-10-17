@@ -5,7 +5,7 @@ import { ConnectionManage } from '../net-util/connection';
 import { EventEmitter } from '../net-util/event-emitter';
 
 export class PackageManage extends EventEmitter {
-  private manage: ConnectionManage = new ConnectionManage(true);
+  private manage: ConnectionManage = new ConnectionManage(true, true);
   protected cursor: number = 0;
   protected  isEnd: boolean = false;
   constructor(private uid: string,protected type?: string) {

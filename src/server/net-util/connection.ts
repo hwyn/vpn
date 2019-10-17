@@ -4,13 +4,14 @@ import { PACKAGE_MAX_SIZE } from '../constant';
 
 const SERIAL_SIZE = 8;
 const LENGTH_SIZE = 32;
+
 const DATA = 0;
 const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
 const HEARTBEAT = 4;
 const TIMEOUT = 5;
-
+const CONFIM = 6;
 const MAX_SERIAL = Math.pow(2, 16);
 
 /**
@@ -132,18 +133,24 @@ export class ConnectionManage extends EventEmitter {
   private sendSetTimeout: () => void = this.factorySetTimeout(this.directly.bind(this));
 
   private timeouted: boolean = false; // 丢包状态
-  private lossTimer: number = 0; // 丢包延迟同步信息时间
-  private clearLossTimeout: any; // 丢包异步
-  private lossSetTimeout: () => any = this.factorySetTimeout(this.sendLossTimeout.bind(this), this.lossTimer);
+  private lossTimer: number = 1500; // 丢包延迟同步信息时间
 
   private openHearbeat: boolean = false; // 开启心跳检测
   private heartbeatTimer: number = 15000; // 心跳检测时间
   private clearHeartbeatTimeout: () => any;
   private heartbeatSetTimeout: () => any = this.factorySetTimeout(this.sendHeartbeatPackage.bind(this), this.heartbeatTimer);
-  constructor(openHearbeat?: boolean, maxSize?: number) {
+
+  // 重发数据
+  private openResend: boolean = false;
+  private resend: (serial: number, data: Buffer) => any = this.factorySetTimeout(this.factoryResend.bind(this), this.lossTimer);
+
+  private writeBuffer: { serial: number, data: Buffer }[] = [];
+  private sendBufferHandle: Map<number, { status: boolean, clearResend: any }> = new Map();
+  constructor(openHearbeat?: boolean, openResend?: boolean, maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
     this.openHearbeat = openHearbeat || false;
+    this.openResend = openResend;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
     this.on('_close', () => this.emitAsync('close'));
   }
@@ -177,7 +184,7 @@ export class ConnectionManage extends EventEmitter {
   private sendHeartbeatPackage() {
     if (!this.destroyed) {
       const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
-      this.stick(buffer, HEARTBEAT);
+      this.writeEvent(HEARTBEAT, buffer);
     } else {
       this.emitAsync('_close');
     }
@@ -189,6 +196,7 @@ export class ConnectionManage extends EventEmitter {
   private messageHeartbeat(buffer: Buffer) {
     const { type: targetStatus } = ConnectionManage.readPackageType(buffer);
     this.targetStatus = targetStatus;
+    console.log(`---------heartbeat---------targetStatus:${targetStatus}------localhostStatus:${this.localhostStatus}`);
     if (targetStatus === CLOSE && this.localhostStatus !== CLOSE) {
       if (![DATA, CLOSE].includes(this.localhostStatus)) {
         this.close();
@@ -210,32 +218,21 @@ export class ConnectionManage extends EventEmitter {
     this.clearHeartbeatTimeout = this.heartbeatSetTimeout();
   }
 
-  /**
-   * 发送丢包信息
-   */
-  private sendLossTimeout() {
-    console.log(`--------TIMEOUT-------- ${this.localhostStatus} ----- ${this.targetStatus}`);
-    this.timeouted = true;
-    this.splitCacheBufferArray = [];
-    this.splitMap.clear();
-    this.splitCacheBuffer = Buffer.alloc(0);
-    this.stick(this.resetSerial(), TIMEOUT);
-    this.clearLossTimeout = null;
+  private writeConfim(serial: number) {
+    if (this.openResend) {
+      this.writeEvent(CONFIM, Buffer.from(serial.toString()));
+    }
   }
 
-  /**
-   * 传送丢包信息
-   */
-  private messageLoss(buffer: Buffer) {
-    this.stickCacheBufferArray = [];
-    this.stickSerial = parseInt(buffer.toString());
-    this.timeouted = true;
-    if (this.localhostStatus === DATA) {
-      this.destroy(new Error('socket loss package'));
-    } else {
-      const buffer = ConnectionManage.writePaackageType(this.localhostStatus, Buffer.alloc(0));
-      this.stick(buffer, HEARTBEAT);
+  private messageConfim(buffer: Buffer) {
+    const confimSerial = parseInt(buffer.toString());
+    const resendItem = this.sendBufferHandle.get(confimSerial);
+    if (resendItem) {
+      resendItem.status = true;
+      resendItem.clearResend();
     }
+    this.sendBufferHandle.delete(confimSerial);
+    this.write();
   }
 
   // 重置包序列号
@@ -273,6 +270,28 @@ export class ConnectionManage extends EventEmitter {
   }
 
   /**
+   * 发送事件信息
+   * @param eventType 事件类型
+   * @param data 数据
+   */
+  private writeEvent(eventType: number, data: Buffer) {
+    const stickSerial = this.stickSerial;
+    this.stickSerial = -1;
+    const eventPackage = this.packing(ConnectionManage.writePaackageType(eventType, data));
+    this.stickSerial = stickSerial;
+    this.emitAsync('send', eventPackage);
+  }
+
+
+  private _eventSwitch(buffer: Buffer) {
+    const { type, data } = ConnectionManage.readPackageType(buffer);
+    switch(type) {
+      case CONFIM: this.messageConfim(data); break;
+      case HEARTBEAT: this.messageHeartbeat(data);
+    }
+  }
+
+  /**
    * 远程事件类型处理
    * @param type event
    * @param buffer Buffer
@@ -283,9 +302,7 @@ export class ConnectionManage extends EventEmitter {
       return ;
     }
     
-    if (type === TIMEOUT) {
-      this.messageLoss(buffer);
-    } else if (this.targetStatus !== DATA) {
+    if (this.targetStatus !== DATA) {
       if (this.targetStatus === ERROR) {
         this.errorMessage = buffer.toString();
       }
@@ -293,10 +310,41 @@ export class ConnectionManage extends EventEmitter {
     }
   }
 
+  /**
+   * 发送区
+   * @param data buffer
+   */
   private send(data: Buffer) {
-    const sendDate = this.packing(data);
-    this.emitAsync('send', sendDate);
+    let sendDate = this.packing(data);
+    this.writeBuffer.push({serial: this.stickSerial - 1, data: sendDate });
+    if (this.sendBufferHandle.size < 4) this.write();
+  }
+
+  private write() {
+    if (this.writeBuffer.length === 0) return ;
+    const { serial, data } = this.writeBuffer.shift();
+    this.emitAsync('send', data);
     this.openHearbeat && this.factoryHeartbeat();
+    if (this.openResend) {
+      this.sendBufferHandle.set(serial, { status: false, clearResend: this.resend(serial, data) });
+    }
+  }
+
+  private factoryResend(serial: number, data: Buffer) {
+    const item = this.sendBufferHandle.get(serial);
+    if (this.destroy) {
+      return ;
+    }
+    console.log(`--------Resend----------${serial}`, data.length);
+    console.log(this.sendBufferHandle.get(serial));
+    if (item && item.status === false) {
+      item.clearResend();
+      this.sendBufferHandle.delete(serial);
+      this.writeBuffer.unshift({ serial, data});
+      this.write();
+    } else {
+      this.sendBufferHandle.delete(serial);
+    }
   }
 
   private splitMerge(buffer: Buffer) {
@@ -307,7 +355,12 @@ export class ConnectionManage extends EventEmitter {
       if (packageSize > packageBuffer.length) {
         break;
       }
-      this.splitMap.set(serial, data);
+      if (serial === -1) {
+        this._eventSwitch(data);
+      } else {
+        this.writeConfim(serial);
+        this.splitMap.set(serial, data);
+      }
       splitBuffer = splitBuffer.slice(packageSize);
     }
     this.splitCacheBuffer = splitBuffer;
@@ -347,7 +400,6 @@ export class ConnectionManage extends EventEmitter {
         targetStatus === ERROR ? this.emitAsync('error', new Error(this.errorMessage)) : this.emitAsync('end');
       }
     } else if (localhostStatus === targetStatus && localhostStatus === CLOSE) {
-      this.clearLossTimeout && this.clearLossTimeout();
       this.emitAsync('_close');
     }
   }
@@ -398,12 +450,6 @@ export class ConnectionManage extends EventEmitter {
       );
       this.splitMap.delete(this.splitSerial);
       this.splitSerial++;
-    }
-    if (this.splitMap.size !== 0) {
-      !this.clearLossTimeout && (this.clearLossTimeout = this.lossSetTimeout());
-    } else if (this.clearLossTimeout) {
-      this.clearLossTimeout();
-      this.clearLossTimeout = null;
     }
 
     let cacheArray: any = [];
