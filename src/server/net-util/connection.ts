@@ -262,7 +262,7 @@ export class ConnectionManage extends EventEmitter {
     let sendDate = this.packing(this.stickSerial, data);
     this.writeBuffer.push({serial: this.stickSerial, data: sendDate });
     this.stickSerial++;
-    if (this.sendBufferHandle.size === 0) this.write();
+    if (this.sendBufferHandle.size < 4) this.write();
   }
 
   private write() {
@@ -335,8 +335,11 @@ export class ConnectionManage extends EventEmitter {
       let buffer = localhostStatus === ERROR ? Buffer.from(this.errorMessage) : Buffer.alloc(0);
       this.stick(buffer, localhostStatus);
     }
-    console.log(`-------targetChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
-    console.log(`-------localhostChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    if (isTargetChange) {
+      console.log(`-------targetChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    } else {
+      console.log(`-------localhostChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    }
     // 状态不一致
     if (isTargetChange && localhostStatus === DATA) {
       if (targetStatus === ERROR) {
