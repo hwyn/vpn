@@ -134,7 +134,7 @@ export class ConnectionManage extends EventEmitter {
 
   private timeouted: boolean = false; // 丢包状态
   private maxResendNumber: number = 3;
-  private lossTimer: number = 1500; // 丢包延迟同步信息时间
+  private lossTimer: number = 15000; // 丢包延迟同步信息时间
 
   // 重发数据
   private openResend: boolean = false;
@@ -290,7 +290,9 @@ export class ConnectionManage extends EventEmitter {
       this.sendBufferHandle.delete(serial);
       this.writeBuffer.unshift({ serial, data});
       this.write();
-      this.sendBufferHandle.get(serial).resend = item.resend + 1;
+      if (this.sendBufferHandle.get(serial)) {
+        this.sendBufferHandle.get(serial).resend = item.resend + 1;
+      }
     } else {
       this.sendBufferHandle.delete(serial);
     }
