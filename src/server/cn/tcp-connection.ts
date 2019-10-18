@@ -39,7 +39,10 @@ export class TcpConnection extends ProxyBasic {
     packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
     packageManage.once('end', () => clientSocket.end());
-    packageManage.once('error', (error: Error) => clientSocket.destroy(error));
+    packageManage.once('error', (error: Error) => {
+      clientSocket.destroy(error);
+      this.clientClose(uid);
+    });
     packageManage.once('close', this.clientClose(uid));
 
     clientSocket.on('data', (data: Buffer) => packageManage.write(data));
@@ -48,7 +51,7 @@ export class TcpConnection extends ProxyBasic {
     clientSocket.on('end', () => packageManage.end());
     clientSocket.on('close', () => packageManage.close());
     clientSocket.on('error', (error: Error) => packageManage.error(error));
-    clientSocket.on('agentError', () => packageManage.destroy());
+    clientSocket.on('agentError', () => packageManage.destroy(new Error('This socket has been ended by the other party')));
     packageManage.write(buffer);
   };
 

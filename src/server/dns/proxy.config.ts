@@ -11,6 +11,7 @@ const proxy = {
   // 'apis.google.com': '127.128.1.120',
   // '*.google.com': '127.128.0.37',
   '*': LOCALHOST_ADDRESS,
+  // 'common.cnblogs.com': LOCALHOST_ADDRESS,
 };
 
 const encodeAddress = (address: string) => {
