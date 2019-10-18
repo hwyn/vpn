@@ -335,9 +335,8 @@ export class ConnectionManage extends EventEmitter {
       let buffer = localhostStatus === ERROR ? Buffer.from(this.errorMessage) : Buffer.alloc(0);
       this.stick(buffer, localhostStatus);
     }
-    if (isTargetChange) {
-      console.log(`-----------target:${this.targetStatus}------localhost:${this.localhostStatus}`);
-    }
+    console.log(`-------targetChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    console.log(`-------localhostChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
     // 状态不一致
     if (isTargetChange && localhostStatus === DATA) {
       if (targetStatus === ERROR) {
