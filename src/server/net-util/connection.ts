@@ -3,7 +3,6 @@ import { BufferUtil } from './buffer-util';
 import { PACKAGE_MAX_SIZE } from '../constant';
 
 const SERIAL_SIZE = 8;
-const LENGTH_SIZE = 32;
 
 const DATA = 0;
 const END = 1;
@@ -14,28 +13,38 @@ const TIMEOUT = 5;
 const CONFIM = 6;
 const MAX_SERIAL = Math.pow(2, 16);
 
+
+const getLengthSize = (maxSize: number): 8 | 16 | 32 | 64 =>  {
+  let size = 1;
+  while(Math.pow(2, size) < maxSize) size++;
+  return Math.ceil(size / 8) * 8 as any;
+}
+
 /**
  * ----------------------------------------
  *  count | countCurrent | data
  * ----------------------------------------
  */
 class PackageShard {
-  constructor(private maxSize: number) {}
+  private LENGTH_SIZE: 8 | 16 | 32 | 64;
+  constructor(private maxSize: number) { 
+    this.LENGTH_SIZE = getLengthSize(this.maxSize);
+  }
 
   private factorySplit(splitCount: number) {
     let currentCount = 1;
     return (data: Buffer): Buffer => {
-      const title = BufferUtil.writeGrounUInt([currentCount++, splitCount, data.length], [8, 8, LENGTH_SIZE]);
+      const title = BufferUtil.writeGrounUInt([currentCount++, splitCount, data.length], [8, 8, this.LENGTH_SIZE]);
       return BufferUtil.concat(title, data);
     };
   }
 
   private factoryUnSplit(buffer: Buffer) {
     let remainingBuffer = buffer;
-    const titleLength = 8 + 8 + LENGTH_SIZE;
+    const titleLength = 8 + 8 + this.LENGTH_SIZE;
     const split = (_buffer: Buffer) => {
       const [ title ] = BufferUtil.unConcat(_buffer, [titleLength]);
-      const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, LENGTH_SIZE]) as number[];
+      const [ currentCount, splitCount, length ] = BufferUtil.readGroupUInt(title, [8, 8, this.LENGTH_SIZE]) as number[];
       const packageSize = titleLength + length;
       const packageBuffer = _buffer.slice(titleLength, packageSize);
       return {
@@ -115,6 +124,7 @@ export class ConnectionManage extends EventEmitter {
     return { type, data };
   }
 
+  private LENGTH_SIZE: 8 | 16 | 32 | 64;
   private _stickSerial: number = 0;
   private _splitSerial: number = 0;
   private stickCacheBufferArray: Buffer[] = [];
@@ -123,7 +133,7 @@ export class ConnectionManage extends EventEmitter {
   private splitMap: Map<number, Buffer> = new Map();
   private splitCacheBufferArray: Buffer[] = [];
   private shard: PackageShard; // 包组合工具
-  private titleSize = SERIAL_SIZE + LENGTH_SIZE; // 包头部长度
+  private titleSize: any; // 包头部长度
   private maxSize: number; // 包最大长度
 
   private errorMessage: string;
@@ -134,17 +144,18 @@ export class ConnectionManage extends EventEmitter {
 
   private timeouted: boolean = false; // 丢包状态
   private maxResendNumber: number = 3;
-  private lossTimer: number = 15000; // 丢包延迟同步信息时间
+  private lossTimer: number = 500; // 丢包延迟同步信息时间
 
   // 重发数据
   private openResend: boolean = false;
-  private resend: (serial: number, data: Buffer) => any = this.factorySetTimeout(this.factoryResend.bind(this), this.lossTimer);
 
   private writeBuffer: { serial: number, data: Buffer }[] = [];
-  private sendBufferHandle: Map<number, { status: boolean, resend: number, clearResend: any }> = new Map();
+  private sendBufferHandle: Map<number, { status: boolean, timer: number, resend: number, clearResend: any }> = new Map();
   constructor(openResend?: boolean, maxSize?: number) {
     super();
     this.maxSize = maxSize || PACKAGE_MAX_SIZE;
+    this.LENGTH_SIZE = getLengthSize(this.maxSize);
+    this.titleSize = SERIAL_SIZE + this.LENGTH_SIZE;
     this.openResend = openResend;
     this.shard = new PackageShard(this.maxSize - this.titleSize - 100);
     this.on('_close', () => this.emitAsync('close'));
@@ -155,8 +166,9 @@ export class ConnectionManage extends EventEmitter {
    * @param timer 
    * @param callback 
    */
-  private factorySetTimeout(callback: () => void, timer?: number) {
+  private factorySetTimeout(callback: () => void, timer?: number | Function) {
     let st: any;
+    const timerFn = typeof timer === 'function' ? timer : () => timer;
     const _clearTimeout = () => {
       if (st) {
         clearTimeout(st);
@@ -168,7 +180,7 @@ export class ConnectionManage extends EventEmitter {
       st = setTimeout(() => {
         callback.call(this, ...arg);
         st = null;
-      }, timer);
+      }, timerFn());
       return _clearTimeout;
     }
   }
@@ -179,18 +191,32 @@ export class ConnectionManage extends EventEmitter {
     }
   }
 
-  private messageConfim(buffer: Buffer) {
-    const confimSerial = parseInt(buffer.toString());
+  private clearSendHandle(confimSerial: number): boolean {
     const resendItem = this.sendBufferHandle.get(confimSerial);
     if (resendItem) {
       resendItem.status = true;
       resendItem.clearResend();
+      this.resetResendTimer(new Date().getTime() - resendItem.timer);
     }
     this.sendBufferHandle.delete(confimSerial);
-    if (this.localhostStatus === CLOSE && this.writeBuffer.length === 0 && this.sendBufferHandle.size === 0) {
-      console.log(`-------------confim-----close`);
-      this._destory();
-    } else {
+
+    return this.localhostStatus === CLOSE && this.writeBuffer.length === 0 && this.sendBufferHandle.size === 0;
+  }
+
+  private messageConfim(buffer: Buffer) {
+    let confimSerial = parseInt(buffer.toString());
+    let endStatus = false;
+    const length = this.sendBufferHandle.size;
+    for (let i = 0; i < length; i++) {
+      if (this.sendBufferHandle.has(--confimSerial) && this.clearSendHandle(confimSerial)) {
+        console.log(`-------------confim-----close`);
+        this._destory();
+        endStatus = true;
+        break;
+      }
+    }
+
+    if (!endStatus) {
       this.write();
     }
   }
@@ -203,7 +229,7 @@ export class ConnectionManage extends EventEmitter {
   private packing(stickSerial: number, data: Buffer) {
     const serialBuffer = BufferUtil.concat(stickSerial.toString());
     const length = this.titleSize + serialBuffer.length + data.length;
-    const titleBuffer = BufferUtil.writeGrounUInt([serialBuffer.length, length], [SERIAL_SIZE, LENGTH_SIZE]);
+    const titleBuffer = BufferUtil.writeGrounUInt([serialBuffer.length, length], [SERIAL_SIZE, this.LENGTH_SIZE]);
     return BufferUtil.concat(titleBuffer, serialBuffer, data);
   }
 
@@ -213,12 +239,21 @@ export class ConnectionManage extends EventEmitter {
    */
   private unpacking(buffer: Buffer): { serial: number, packageSize: number, packageBuffer: Buffer, data: Buffer } {
     const title = buffer.slice(0, this.titleSize);
-    const [ serialSize, packageSize ] = BufferUtil.readGroupUInt(title, [SERIAL_SIZE, LENGTH_SIZE]) as number[];
+    const [ serialSize, packageSize ] = BufferUtil.readGroupUInt(title, [SERIAL_SIZE, this.LENGTH_SIZE]) as number[];
     const unConcat = BufferUtil.unConcat(buffer, [ this.titleSize, serialSize ]);
     const serial = parseInt(unConcat[1].toString());
     const packageBuffer = buffer.slice(0, packageSize);
     const data = packageBuffer.slice(this.titleSize + serialSize);
     return { serial, packageSize: packageSize, packageBuffer, data };
+  }
+
+  private resetResendTimer(betTime: number) {
+    // const oldTimer = this.lossTimer;
+    if (betTime > this.lossTimer) {
+      this.lossTimer = betTime;
+    }
+    // this.lossTimer = oldTimer > this.lossTimer ? Math.ceil((oldTimer + betTime * 2) / 2);
+    // console.log(betTime, this.lossTimer);
   }
 
   /**
@@ -270,7 +305,7 @@ export class ConnectionManage extends EventEmitter {
       if (this.writeBuffer.length === 0) return ;
       const { serial, data } = this.writeBuffer.shift();
       this.emitAsync('send', data);
-      this.openResend && this.sendBufferHandle.set(serial, { status: false, resend: 0, clearResend: this.resend(serial, data) });
+      this.resend(serial, data);
     } else if (this.localhostStatus === CLOSE) {
       this._destory();
     } else {
@@ -278,21 +313,43 @@ export class ConnectionManage extends EventEmitter {
     }
   }
 
-  private factoryResend(serial: number, data: Buffer) {
-    const item = this.sendBufferHandle.get(serial);
-    if (item && item.status === false) {
-      if (item.resend > this.maxResendNumber) {
+  private resend(serial: number, data: Buffer) {
+    if (!this.openResend) {
+      return ;
+    }
+    let timer = this.lossTimer;
+    const sendHandle = this.sendBufferHandle.get(serial);
+
+    if (sendHandle) {
+      if (sendHandle.resend >= this.maxResendNumber) {
         this.timeouted = true;
         return this.destroy(new Error('socket timeout'));
       }
+
+      if (sendHandle.status === false) {
+        timer = (sendHandle.resend + 1) * timer;
+      }
+    }
+    
+
+    if (!sendHandle || sendHandle.status === false) {
+      const resend = this.factorySetTimeout(this.factoryResend.bind(this), timer);
+      const clearResend = resend(serial, data);
+      this.sendBufferHandle.set(serial, {
+        status: sendHandle ? sendHandle.status : false,
+        resend: sendHandle ? sendHandle.resend + 1 : 1,
+        timer: new Date().getTime(),
+        clearResend
+      });
+    }
+  }
+
+  private factoryResend(serial: number, data: Buffer) {
+    const item = this.sendBufferHandle.get(serial);
+    if (item && item.status === false) {
       console.log(`--------Resend------resend:${item.resend}------serial:${serial}`);
-      item.clearResend();
-      this.sendBufferHandle.delete(serial);
       this.writeBuffer.unshift({ serial, data});
       this.write();
-      if (this.sendBufferHandle.get(serial)) {
-        this.sendBufferHandle.get(serial).resend = item.resend + 1;
-      }
     } else {
       this.sendBufferHandle.delete(serial);
     }
@@ -300,7 +357,7 @@ export class ConnectionManage extends EventEmitter {
 
   private splitMerge(buffer: Buffer) {
     let splitBuffer = BufferUtil.concat(this.splitCacheBuffer, buffer);
-    const size = SERIAL_SIZE + LENGTH_SIZE;
+    const size = SERIAL_SIZE + this.LENGTH_SIZE;
     while (splitBuffer.length > size) {
       const { serial, packageSize, packageBuffer, data } = this.unpacking(splitBuffer);
       if (packageSize > packageBuffer.length) {
@@ -337,11 +394,11 @@ export class ConnectionManage extends EventEmitter {
       let buffer = localhostStatus === ERROR ? Buffer.from(this.errorMessage) : Buffer.alloc(0);
       this.stick(buffer, localhostStatus);
     }
-    if (isTargetChange) {
-      console.log(`-------targetChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
-    } else {
-      console.log(`-------localhostChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
-    }
+    // if (isTargetChange) {
+    //   console.log(`-------targetChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    // } else {
+    //   console.log(`-------localhostChange----target:${this.targetStatus}------localhost:${this.localhostStatus}`);
+    // }
     // 状态不一致
     if (isTargetChange && localhostStatus === DATA) {
       if (targetStatus === ERROR) {
@@ -385,6 +442,7 @@ export class ConnectionManage extends EventEmitter {
       return this.destroy(new Error('This socket has been ended by the other party'));
     }
 
+    let startSerial = this.splitSerial;
     this.splitMerge(buffer);
     while(this.splitMap.has(this.splitSerial)) {
       this.splitCacheBufferArray = [].concat(
@@ -392,9 +450,10 @@ export class ConnectionManage extends EventEmitter {
         this.shard.unSplitData(this.splitMap.get(this.splitSerial))
       );
       this.splitMap.delete(this.splitSerial);
-      this.writeConfim(this.splitSerial);
       this.splitSerial++;
     }
+
+    if (this.splitSerial !== startSerial) this.writeConfim(this.splitSerial);
 
     let cacheArray: any = [];
     let splitArray: any = [];
@@ -460,6 +519,7 @@ export class ConnectionManage extends EventEmitter {
     this.writeBuffer.splice(0, this.writeBuffer.length);
     this.sendBufferHandle.forEach((item) => item.clearResend());
     this.sendBufferHandle.clear();
+    this.splitMap.clear();
     this.emitAsync('_close');
   }
 
