@@ -11,7 +11,7 @@ const CLOSE = 3;
 const HEARTBEAT = 4;
 const TIMEOUT = 5;
 const CONFIM = 6;
-const MAX_SERIAL = Math.pow(2, 16);
+const MAX_SERIAL = Math.pow(2, 8);
 
 
 const getLengthSize = (maxSize: number): 8 | 16 | 32 | 64 =>  {
@@ -453,7 +453,10 @@ export class ConnectionManage extends EventEmitter {
       this.splitSerial++;
     }
 
-    if (this.splitSerial !== startSerial) this.writeConfim(this.splitSerial);
+    if (this.splitSerial !== startSerial) {
+      if (startSerial > this.splitSerial) this.writeConfim(MAX_SERIAL);
+      this.writeConfim(this.splitSerial);
+    }
 
     let cacheArray: any = [];
     let splitArray: any = [];
@@ -530,7 +533,7 @@ export class ConnectionManage extends EventEmitter {
   set stickSerial(val: number) {
     this._stickSerial = val;
     if (val > MAX_SERIAL - 1) {
-      this._stickSerial = 0;
+      this._stickSerial = val - (MAX_SERIAL - 1);
     }
   }
 
@@ -541,7 +544,7 @@ export class ConnectionManage extends EventEmitter {
   set splitSerial(val: number) {
     this._splitSerial = val;
     if (val > MAX_SERIAL - 1) {
-      this._splitSerial = 0;
+      this._splitSerial = val - (MAX_SERIAL - 1);
     }
   }
 
