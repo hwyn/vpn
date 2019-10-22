@@ -70,7 +70,7 @@ export const getIPv4Address = () => getLocahostInterface().address;
 export const getIPv6Address = () => getLocahostInterface(true).address;
 
 /**
- * 获取网络硬件接口信息
+ * 获取网络设备名称
  */
 export const getHardware = async (): Promise<any[]> => {
   const hardwareInfo: any = [];
