@@ -36,8 +36,8 @@ export class WorkerManage extends EventEmitter {
 
   private distributionWorker({ data }: any) {
     const dateBuffer = Buffer.from(data);
-    const { socketID } = PackageUtil.unWriteSocketId(dateBuffer);
-    const runWorker = manageList.getWorker(socketID);
+    const { uid } = PackageUtil.getUid(dateBuffer);
+    const runWorker = manageList.getWorker(uid);
     if (!runWorker) {
       this.send({ event: NOT_SOCKETID_PROCESS, data: dateBuffer});
     }

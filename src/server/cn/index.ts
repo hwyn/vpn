@@ -32,7 +32,6 @@ class ListenerClient extends EventEmitter {
   
   call = (port: number) => (clientSocket: ProxyTcpSocket) => {
     const tcpConnection = this.tcpConnectionManage.getTcpConnect(this.socketID) as TcpConnection;
-    
     if (!tcpConnection || !this.socketID) {
       return clientSocket.destroy();
     }

@@ -17,24 +17,9 @@ export class TcpConnection extends ProxyBasic {
     this.initEventCommunication(new EventCommunication(eventTcp));
   }
 
-  /**
-   * 接收到服务端响应数据
-   */
-  public responseData = () => (data: Buffer) => {
-    const { uid, buffer} = PackageUtil.getUid(data);
-    const clientSocket = this.socketMap.get(uid);
-    if (clientSocket) {
-      clientSocket.emitSync('agent', buffer);
-    } else {
-      this.send(PackageUtil.bindUid(uid, Buffer.alloc(0)));
-    }
-  };
-
   connectionListener = (uid: string, clientSocket: ProxyTcpSocket) => (buffer: Buffer) => {
     const packageManage = new PackageManage(uid, SERVER_TYPE.CLIENT);
 
-    this.socketMap.set(uid, clientSocket);
-    
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
@@ -61,8 +46,10 @@ export class TcpConnection extends ProxyBasic {
     }
     const uid = uuid();
     console.log(`--------client connection ${ uid }----------`);
+    this.clientAdd(uid, clientSocket);
     this.eventCommunication.createLink(uid, port, data, (error: Error) => {
       if (error) {
+        this.clientClose(uid);
         return clientSocket.destroy(error);
       }
       this.connectionListener(uid, clientSocket)(data);

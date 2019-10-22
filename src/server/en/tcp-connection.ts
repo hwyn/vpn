@@ -28,24 +28,9 @@ export class TcpConnection extends ProxyBasic {
     this.eventCommunication.on('link', this.callEvent());
   }
 
-  /**
-   * 接收到客户端提发送数据
-   */
-  public requestData = () => (data: Buffer) => {
-    const { uid, buffer } = PackageUtil.getUid(data);
-    const clientSocket = this.socketMap.get(uid);
-    if (clientSocket) {
-      clientSocket.emitSync('agent', buffer);
-    } else if(buffer.length !== 0) {
-      this.send(PackageUtil.bindUid(uid, Buffer.alloc(0)));
-    }
-  };
-
   connectionListener = (uid: string, clientSocket: ProxyTcpSocket) => async() => {
     const packageManage = new PackageManage(uid, SERVER_TYPE.SERVER);
     
-    this.socketMap.set(uid, clientSocket);
-
     packageManage.on('data', (data: Buffer) => clientSocket.write(data));
     packageManage.on('send', (data: Buffer) => this.send(PackageUtil.bindUid(uid, data)));
 
@@ -76,9 +61,11 @@ export class TcpConnection extends ProxyBasic {
         throw new Error(`address is ${LOCALHOST_ADDRESS}`);
       }
       const clientSocket = ProxyTcpSocket.createSocketClient(address, port);
+      this.clientAdd(uid, clientSocket);
       clientSocket.once('connect', this.connectionListener(uid, clientSocket));
       clientSocket.once('connect', eventCommunication.createLinkSuccess(uid));
       clientSocket.once('connect-error', this.eventCommunication.createLinkEror(uid));
+      clientSocket.once('connect-error', () => this.clientClose(uid));
     } catch(e) {
       eventCommunication.createLinkEror(uid)();
     }

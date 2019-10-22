@@ -2,7 +2,7 @@
  * Created by NX on 2019/8/25.
  */
 import { ProxyUdpSocket, createSocketClient } from './net-util/proxy-udp-socket';
-import { ProxyTcpSocket } from './net-util';
+import { ProxyTcpSocket, proxyProcess } from './net-util';
 import { EventCommunication, PackageUtil } from './util';
 import { EventEmitter } from './net-util/event-emitter';
 import { ArrayLink, LinkNode } from './util/array-link';
@@ -51,8 +51,7 @@ export abstract class ProxyBasic extends EventEmitter {
    * @param uid 
    */
   private write(buffer: Buffer) {
-    const sendBuffer = PackageUtil.writeSocketID(this.socketID, buffer);
-    this.udpClientSend.value.write(sendBuffer);
+    this.udpClientSend.value.write(buffer);
     this.udpClientSend = this.udpClientSend.nextNode;
   }
 
@@ -67,6 +66,11 @@ export abstract class ProxyBasic extends EventEmitter {
     this.write(data);
   };
 
+  protected clientAdd(uid: string, clientSocket: ProxyTcpSocket) {
+    this.socketMap.set(uid, clientSocket);
+    proxyProcess.bindSocketId(uid);
+  }
+
   /**
    * 关闭某个连接
    * @param uid string
@@ -74,7 +78,24 @@ export abstract class ProxyBasic extends EventEmitter {
   protected clientClose(uid: string) {
     return () => {
       this.socketMap.delete(uid);
+      proxyProcess.deleteSocketId(uid);
       console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
     }
+  }
+
+  /**
+   * 接收到代理数据后处理
+   */
+  public agentData(uid: string, data: Buffer) {
+    const clientSocket = this.socketMap.get(uid);
+    if (clientSocket) {
+      clientSocket.emitSync('agent', data);
+    } else if(data.length !== 0) {
+      this.send(PackageUtil.bindUid(uid, Buffer.alloc(0)));
+    }
+  }
+
+  public hasClient(uid: string) {
+    return this.socketMap.has(uid);
   }
 }

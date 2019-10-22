@@ -346,9 +346,11 @@ export class ConnectionManage extends EventEmitter {
 
   private factoryResend(serial: number, data: Buffer) {
     const item = this.sendBufferHandle.get(serial);
-    if (item && item.status === false) {
-      console.log(`--------Resend------resend:${item.resend}------serial:${serial}`);
-      this.writeBuffer.unshift({ serial, data});
+    if (item && item.status === false ) {
+      if (this.targetStatus !== CLOSE) {
+        console.log(`--------Resend------resend:${item.resend}------serial:${serial}`);
+        this.writeBuffer.unshift({ serial, data});
+      }
       this.write();
     } else {
       this.sendBufferHandle.delete(serial);

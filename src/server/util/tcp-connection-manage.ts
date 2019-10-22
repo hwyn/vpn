@@ -38,23 +38,28 @@ export class TcpConnectionManage extends EventEmitter {
     return this.udpServerList;
   }
 
+  private getClientToConnect(uid: string) {
+    let tcpConnection: ProxyBasic;
+    this.connection.forEach((val: ProxyBasic) => {
+      if (val.hasClient(uid)) tcpConnection = val;
+      else if (!tcpConnection) tcpConnection = val;
+    });
+    return tcpConnection;
+  }
+
   private async getConnecction(data: Buffer): Promise<any> {
-    const { socketID, buffer } = PackageUtil.unWriteSocketId(data);
-    const tcpConnection = this.getTcpConnect(socketID);
-    if (tcpConnection) return Promise.resolve({ tcpConnection, buffer });
+    const { uid, buffer } = PackageUtil.getUid(data);
+    const tcpConnection = this.getClientToConnect(uid);
+    if (tcpConnection) return Promise.resolve({ tcpConnection, uid, buffer });
     else return Promise.reject('tcpConnection not defined');
   }
 
-  private message({ tcpConnection, buffer }: { tcpConnection: any, buffer: Buffer }) {
-    if (this.type === SERVER_TYPE.CLIENT) {
-      tcpConnection.responseData()(buffer);
-    } else {
-      tcpConnection.requestData()(buffer);
-    }
+  private message({ tcpConnection, uid, buffer }: { tcpConnection: any, uid: string, buffer: Buffer }) {
+    tcpConnection.agentData(uid, buffer);
   }
 
   protected udpMessage(data: Buffer) {
-    const { socketID } = PackageUtil.unWriteSocketId(data);
+    const { uid } = PackageUtil.getUid(data);
     if (this.type === SERVER_TYPE.CLIENT) {
       proxyProcess.responseMessage(data);
     } else {
@@ -68,10 +73,8 @@ export class TcpConnectionManage extends EventEmitter {
 
   public setTcpConnection(socketID: string, tcpConnection: ProxyBasic) {
     this.connection.set(socketID, tcpConnection);
-    proxyProcess.bindSocketId(socketID);
     tcpConnection.once('close', (socketID: string) => {
       console.log(`close socketID:`, socketID);
-      proxyProcess.deleteSocketId(socketID);
       this.connection.delete(socketID);
     });
   }
