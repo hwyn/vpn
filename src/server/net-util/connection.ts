@@ -8,9 +8,7 @@ const DATA = 0;
 const END = 1;
 const ERROR = 2;
 const CLOSE = 3;
-const HEARTBEAT = 4;
-const TIMEOUT = 5;
-const CONFIM = 6;
+const CONFIM = 4;
 const MAX_SERIAL = Math.pow(2, 8);
 
 
@@ -144,7 +142,7 @@ export class ConnectionManage extends EventEmitter {
 
   private timeouted: boolean = false; // 丢包状态
   private maxResendNumber: number = 3;
-  private lossTimer: number = 500; // 丢包延迟同步信息时间
+  private lossTimer: number = 1000; // 丢包延迟同步信息时间
 
   // 重发数据
   private openResend: boolean = false;
@@ -209,7 +207,6 @@ export class ConnectionManage extends EventEmitter {
     const length = this.sendBufferHandle.size;
     for (let i = 0; i < length; i++) {
       if (this.sendBufferHandle.has(--confimSerial) && this.clearSendHandle(confimSerial)) {
-        console.log(`-------------confim-----close`);
         this._destory();
         endStatus = true;
         break;
@@ -279,14 +276,11 @@ export class ConnectionManage extends EventEmitter {
    * @param buffer Buffer
    */
   private eventSwitch(type: number, buffer: Buffer) {
-    this.targetStatus = [TIMEOUT, HEARTBEAT].includes(type) ? this.targetStatus : type;
-    
-    if (this.targetStatus !== DATA) {
-      if (this.targetStatus === ERROR) {
-        this.errorMessage = buffer.toString();
-      }
-      this.statusSync(true);
+    this.targetStatus = type;
+    if (this.targetStatus === ERROR) {
+      this.errorMessage = buffer.toString();
     }
+    this.statusSync(true);
   }
 
   /**
@@ -297,7 +291,7 @@ export class ConnectionManage extends EventEmitter {
     let sendDate = this.packing(this.stickSerial, data);
     this.writeBuffer.push({serial: this.stickSerial, data: sendDate });
     this.stickSerial++;
-    if (this.sendBufferHandle.size < 4) this.write();
+    if (this.sendBufferHandle.size <= 4) this.write();
   }
 
   private write() {
@@ -330,7 +324,6 @@ export class ConnectionManage extends EventEmitter {
         timer = (sendHandle.resend + 1) * timer;
       }
     }
-    
 
     if (!sendHandle || sendHandle.status === false) {
       const resend = this.factorySetTimeout(this.factoryResend.bind(this), timer);
@@ -417,7 +410,7 @@ export class ConnectionManage extends EventEmitter {
       return ;
     }
 
-    let sendDate = Buffer.alloc(0);
+    let sendLength = 0;
     const remainingArray: any[] | Buffer[] = [];
 
     this.stickCacheBufferArray = [].concat(
@@ -426,14 +419,13 @@ export class ConnectionManage extends EventEmitter {
     );
 
     this.stickCacheBufferArray.forEach((buffer: Buffer) => {
-      sendDate = BufferUtil.concat(sendDate, buffer);
-      if (sendDate.length >= this.maxSize) {
-        this.send(sendDate);
-        sendDate = Buffer.alloc(0);
+      if (sendLength >= this.maxSize || (sendLength + data.length) > this.maxSize) {
+        this.send(BufferUtil.concat(...remainingArray));
         remainingArray.splice(0, remainingArray.length);
-      } else {
-        remainingArray.push(buffer);
-      }
+        sendLength = 0;
+      } 
+      sendLength += data.length;
+      remainingArray.push(buffer);
     });
     this.stickCacheBufferArray = remainingArray;
     this.sendSetTimeout();
