@@ -76,11 +76,9 @@ export abstract class ProxyBasic extends EventEmitter {
    * @param uid string
    */
   protected clientClose(uid: string) {
-    return () => {
-      this.socketMap.delete(uid);
-      proxyProcess.deleteSocketId(uid);
-      console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
-    }
+    this.socketMap.delete(uid);
+    proxyProcess.deleteSocketId(uid);
+    console.log(`${(this as any).serverName} ${uid}  -->  socketMap.size`, this.socketMap.size);
   }
 
   /**
